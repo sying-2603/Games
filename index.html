@@ -159,6 +159,19 @@ body.playing .brand h1 { font-size: 19px; }
   .cond::before { width: 22px; height: 22px; font-size: 12px; }
 }
 
+/* 방 목록 */
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rooms { display: grid; gap: 8px; max-height: 55vh; overflow: auto; }
+.room { text-align: left; border: 1px solid #44524f; background: var(--stone); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; }
+.room:hover:not(:disabled) { border-color: var(--copper); }
+.room:disabled { opacity: .5; cursor: not-allowed; }
+.room-name { font-family: var(--font-display); font-weight: 700; font-size: 17px; }
+.room-meta { display: flex; gap: 5px; flex-wrap: wrap; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--stone); border-radius: 10px; padding: 4px; }
+.segb { border: 0; background: transparent; border-radius: 8px; padding: 9px; font-weight: 600; color: var(--muted); }
+.segb[aria-checked="true"] { background: var(--slab-2); color: var(--copper); box-shadow: inset 0 0 0 1px #44524f; }
+.modal input, .modal select { width: 100%; }
+
 /* 게임 탭 */
 .gtabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--stone); border-radius: 12px; padding: 4px; }
 .gtab { border: 0; background: transparent; border-radius: 9px; padding: 9px 6px; font-weight: 600; color: var(--muted); }
@@ -270,25 +283,35 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     </div>
     <div class="panel">
       <h2>친구와 대결</h2>
-      <p>방을 만들면 초대 코드가 나와요. 먼저 정답을 맞힌 사람이 점수를 가져가요.</p>
+      <p>방을 만들거나 열린 방에 들어가 실시간으로 대결해요. 먼저 맞힌 사람이 점수를 가져가요.</p>
       <div class="row">
         <input id="nameInput" maxlength="10" placeholder="내 이름" aria-label="내 이름">
       </div>
-      <div class="row">
-        <button class="btn primary" id="btnHost" type="button">방 만들기</button>
-      </div>
-      <div class="row">
-        <input id="joinCode" class="code-input" maxlength="4" placeholder="코드" aria-label="초대 코드" autocapitalize="characters">
-        <button class="btn" id="btnJoin" type="button">참가하기</button>
+      <div class="two">
+        <button class="btn primary" id="btnCreate" type="button">방 만들기</button>
+        <button class="btn" id="btnRooms" type="button">방 들어가기</button>
       </div>
       <div class="err" id="netErr" role="alert"></div>
+    </div>
+  </section>
+
+  <!-- 방 목록 -->
+  <section id="viewRooms" hidden>
+    <div class="panel">
+      <h2>열린 방</h2>
+      <div class="rooms" id="roomList"></div>
+      <div class="row">
+        <input id="joinCode" class="code-input" maxlength="4" placeholder="코드" aria-label="방 코드" autocapitalize="characters">
+        <button class="btn" id="btnJoin" type="button">코드로 들어가기</button>
+      </div>
+      <div class="err" id="roomsErr" role="alert"></div>
     </div>
   </section>
 
   <!-- 대기실 -->
   <section id="viewLobby" class="home" hidden>
     <div class="panel">
-      <h2>초대 코드</h2>
+      <h2 id="lobbyTitle">방 코드</h2>
       <div class="big-code" id="lobbyCode">----</div>
       <button class="btn" id="btnCopyInvite" type="button">초대 문구 복사</button>
       <p class="note" id="lobbyNote"></p>
@@ -957,6 +980,8 @@ const store = {
 // 공유 링크: 독립 호스팅(GitHub Pages 등)일 때만 현재 주소를 사용
 const SHARE_URL = (() => { try { return window.top === window ? location.origin + location.pathname : ''; } catch (e) { return ''; } })();
 
+// Firebase 설정 (방 목록·비밀번호 방·안정적인 대결 연결). null이면 브라우저 직접 연결 방식 사용
+const FIREBASE_CONFIG = {"databaseURL": "https://yubaeji-puzzle-default-rtdb.asia-southeast1.firebasedatabase.app", "projectId": "yubaeji-puzzle", "appId": "1:502208697868:web:80ceafefaa03a5428d0029"};
 const ANSWER_MS = 10000;   // 버저 후 답 입력 시간 (비밀 코드)
 const PENALTY_MS = 30000;  // 혼자 풀기 오답 페널티 (비밀 코드)
 
@@ -1004,7 +1029,7 @@ const shapeSvg = (s) => `<svg viewBox="0 0 20 20" aria-hidden="true">${SHAPE_SVG
 
 // ---------- 화면 전환 ----------
 function show(view) {
-  ['viewHome', 'viewLobby', 'viewGame'].forEach((v) => ($(v).hidden = v !== view));
+  ['viewHome', 'viewRooms', 'viewLobby', 'viewGame'].forEach((v) => ($(v).hidden = v !== view));
   $('btnHome').hidden = view === 'viewHome';
   document.body.classList.toggle('playing', view === 'viewGame');
   if (view === 'viewGame') requestAnimationFrame(fitBoard);
@@ -1376,10 +1401,75 @@ async function openPeerTransport(code, isHost, onMsg, onLeft) {
   conn.on('close', () => onLeft('__host__'));
   return { send: (msg) => conn.send(msg), close: () => peer.destroy() };
 }
-async function openTransport(code, isHost, onMsg, onLeft) {
-  return hasClaudeRoom() ? openRoomTransport(code, isHost, onMsg, onLeft) : openPeerTransport(code, isHost, onMsg, onLeft);
+// ---------- Firebase Realtime Database ----------
+// lobby/{코드}: 방 목록에 보이는 정보 / room/{코드}/state: 방장이 쓰는 게임 상태
+// room/{코드}/inbox: 참가자 → 방장 메시지 / room/{코드}/members: 접속 중인 참가자
+let fbDb = null, fbOffset = 0;
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('fb-load')); document.head.appendChild(s); });
 }
-function netError(text) { $('netErr').textContent = text; toast(text, 'bad'); }
+async function firebaseDb() {
+  if (fbDb) return fbDb;
+  const v = '10.12.2';
+  if (!window.firebase) {
+    await loadScript(`https://www.gstatic.com/firebasejs/${v}/firebase-app-compat.js`);
+    await loadScript(`https://www.gstatic.com/firebasejs/${v}/firebase-database-compat.js`);
+  }
+  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  fbDb = firebase.database();
+  fbDb.ref('.info/serverTimeOffset').on('value', (s) => { fbOffset = s.val() || 0; });
+  return fbDb;
+}
+const fbNow = () => Date.now() + fbOffset;
+const clean = (o) => JSON.parse(JSON.stringify(o)); // undefined 제거 (Firebase는 undefined를 못 씀)
+
+async function openFirebaseTransport(code, isHost, onMsg, onLeft, meta) {
+  const db = await firebaseDb();
+  const TS = firebase.database.ServerValue.TIMESTAMP;
+  const lobbyRef = db.ref('lobby/' + code), base = db.ref('room/' + code);
+  if (isHost) {
+    const res = await lobbyRef.transaction((cur) => (cur ? undefined : clean({ ...meta, createdAt: Date.now(), updatedAt: Date.now() })));
+    if (!res.committed) throw new Error('taken');
+    lobbyRef.onDisconnect().remove(); base.onDisconnect().remove();
+    const inbox = base.child('inbox'), members = base.child('members');
+    inbox.on('child_added', (snap) => { const v = snap.val(); snap.ref.remove(); if (v && typeof v === 'object') onMsg(v); });
+    members.on('child_removed', (snap) => onLeft(snap.key));
+    const beat = setInterval(() => lobbyRef.update({ updatedAt: TS }).catch(() => {}), 30000);
+    lobbyRef.update({ updatedAt: TS }).catch(() => {});
+    let lastLobby = '';
+    return {
+      send: (msg) => { if (msg.t === 'state') base.child('state').set(clean(msg.s)).catch(() => {}); },
+      updateLobby: (patch) => { const k = JSON.stringify(patch); if (k !== lastLobby) { lastLobby = k; lobbyRef.update({ ...patch, updatedAt: TS }).catch(() => {}); } },
+      close: () => { clearInterval(beat); inbox.off(); members.off(); lobbyRef.onDisconnect().cancel(); base.onDisconnect().cancel(); lobbyRef.remove(); base.remove(); },
+    };
+  }
+  const snap = await lobbyRef.get();
+  if (!snap.exists()) throw new Error('no-host');
+  const memberRef = base.child('members/' + myCid);
+  await memberRef.set(true); memberRef.onDisconnect().remove();
+  const stateRef = base.child('state');
+  let seen = false;
+  stateRef.on('value', (st) => {
+    const v = st.val();
+    if (v) { seen = true; onMsg({ t: 'state', s: v }); } else if (seen) onLeft('__host__');
+  });
+  return {
+    send: (msg) => base.child('inbox').push(clean(msg)).catch(() => {}),
+    close: () => { stateRef.off(); memberRef.onDisconnect().cancel(); memberRef.remove(); },
+  };
+}
+
+async function openTransport(code, isHost, onMsg, onLeft, meta) {
+  if (hasClaudeRoom()) return openRoomTransport(code, isHost, onMsg, onLeft);
+  if (FIREBASE_CONFIG) return openFirebaseTransport(code, isHost, onMsg, onLeft, meta);
+  return openPeerTransport(code, isHost, onMsg, onLeft);
+}
+const useLobbyList = () => !hasClaudeRoom() && !!FIREBASE_CONFIG;
+async function sha(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+function netError(text) { $('netErr').textContent = text; $('roomsErr').textContent = text; toast(text, 'bad'); }
 function leaveNet() {
   if (net) { try { if (!net.isHost) net.send({ t: 'leave', cid: myCid }); } catch (e) { /* 무시 */ } net.close(); }
   net = null; host = null; lastState = null; lastSeed = null; clearInterval(hostLoop); clearInterval(resendT);
@@ -1402,7 +1492,15 @@ function hostState() {
     cdRemain: host.cdEnd ? host.cdEnd - now : null,
   };
 }
-function hostPush() { if (!host) return; const s = hostState(); net && net.send({ t: 'state', s }); onState(s); }
+function hostPush() {
+  if (!host) return;
+  const s = hostState();
+  if (net) {
+    net.send({ t: 'state', s });
+    if (net.updateLobby) net.updateLobby({ players: host.players.length, phase: host.phase === 'lobby' ? 'lobby' : 'playing', game: host.game });
+  }
+  onState(s);
+}
 function hostEvent(kind, text) { host.event = { id: (host.event ? host.event.id : 0) + 1, kind, text }; }
 function hostPuzzle() { return GAMES[host.game].puzzle(host.seed); }
 function hostOnMsg(m) {
@@ -1425,6 +1523,7 @@ function hostOnMsg(m) {
     if (host.game !== 'code' || host.phase !== 'play' || !host.buzz || host.buzz.cid !== m.cid) return;
     hostJudge(m.cid, String(m.code || ''));
   } else if (m.t === 'solved') {
+    if (m.edges && !Array.isArray(m.edges)) m.edges = Object.values(m.edges);
     if (host.game !== 'fence' || host.phase !== 'play' || !Array.isArray(m.edges)) return;
     const p = host.players.find((x) => x.cid === m.cid); if (!p) return;
     if (!FENCE.check(hostPuzzle(), m.edges.map(Number))) return;
@@ -1487,51 +1586,67 @@ function hostTick() {
   }
 }
 
-async function createRoom() {
+async function createRoom(opts) {
   $('netErr').textContent = '';
   const name = myName();
-  $('btnHost').disabled = true;
+  const game = opts.game || homeGame;
   try {
     let code, tr, tries = 0;
     for (;;) {
       code = newCode();
-      try { tr = await openTransport(code, true, (m) => hostOnMsg(m), (cid) => hostRemove(cid)); break; }
+      const meta = { name: opts.roomName, game, host: name, locked: !!opts.pw, pwHash: opts.pw ? await sha(code + ':' + opts.pw) : null, players: 1, phase: 'lobby' };
+      try { tr = await openTransport(code, true, (m) => hostOnMsg(m), (cid) => hostRemove(cid), meta); break; }
       catch (e) { if (++tries >= 3 || (e && e.message === 'room-unavailable')) throw e; }
     }
-    net = { isHost: true, code, send: tr.send, close: tr.close };
-    host = { phase: 'lobby', game: homeGame, target: 2, level: 2, round: 0, seed: 0, players: [{ cid: myCid, name, score: 0 }], locked: [], buzz: null, reveal: null, event: null, roundEnd: null, cdEnd: null };
-    $('gameSel').value = homeGame; $('levelSel').value = '2'; $('targetSel').value = '2';
+    solo = null; tickers = [netTicker]; stopRoomList();
+    net = { isHost: true, code, roomName: opts.roomName, locked: !!opts.pw, send: tr.send, close: tr.close, updateLobby: tr.updateLobby };
+    host = { phase: 'lobby', game, target: 2, level: 2, round: 0, seed: 0, players: [{ cid: myCid, name, score: 0 }], locked: [], buzz: null, reveal: null, event: null, roundEnd: null, cdEnd: null };
+    $('gameSel').value = game; $('levelSel').value = '2'; $('targetSel').value = '2';
     clearInterval(hostLoop); hostLoop = setInterval(hostTick, 200);
-    clearInterval(resendT); resendT = setInterval(() => { if (host && net) net.send({ t: 'state', s: hostState() }); }, 2500);
+    clearInterval(resendT);
+    if (!FIREBASE_CONFIG || hasClaudeRoom()) resendT = setInterval(() => { if (host && net) net.send({ t: 'state', s: hostState() }); }, 2500);
     hostPush();
   } catch (e) {
     netError(connectErrorText(e));
-  } finally { $('btnHost').disabled = false; }
+  }
 }
 function connectErrorText(e) {
   const m = (e && (e.type || e.code || e.message)) || '';
   if (m === 'room-unavailable' || m === 'not_permitted' || m === 'not_granted') return '이 화면에서는 실시간 대결에 연결할 수 없어요. 페이지를 공유받은 사람(참여자 이상)만 대결할 수 있어요.';
   if (m === 'peer-unavailable' || m === 'no-host') return '그 코드의 방이 없어요. 코드가 맞는지, 방장이 대기실 화면을 켜 두고 있는지 확인해 주세요.';
   if (m === 'blocked' || m === 'timeout') return '방은 찾았지만 연결이 막혔어요. 회사·학교 와이파이나 VPN이면 휴대폰 데이터로 다시 시도해 주세요.';
+  if (m === 'taken') return '방 코드를 만들지 못했어요. 다시 시도해 주세요.';
+  if (m === 'fb-load' || m === 'PERMISSION_DENIED' || m === 'permission_denied') return '대결 서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
   if (m === 'peer-load' || m === 'network' || m === 'server-error') return '대결 서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
   return '연결에 실패했어요. 잠시 후 다시 시도해 주세요.';
 }
 
-async function joinRoom() {
-  $('netErr').textContent = '';
-  const code = ($('joinCode').value || '').trim().toUpperCase();
-  if (!/^[A-Z0-9]{4}$/.test(code)) { netError('초대 코드 4자리를 입력해 주세요.'); return; }
+async function joinRoom(code) {
+  $('netErr').textContent = ''; $('roomsErr').textContent = '';
+  code = (code || '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{4}$/.test(code)) { netError('방 코드 4자리를 입력해 주세요.'); return; }
   const name = myName();
-  $('btnJoin').disabled = true;
   try {
+    // 비밀번호 방이면 먼저 확인
+    if (useLobbyList()) {
+      const db = await firebaseDb();
+      const info = (await db.ref('lobby/' + code).get()).val();
+      if (!info) throw new Error('no-host');
+      if (info.locked) {
+        const pw = await askPassword(info.name);
+        if (pw == null) return;
+        if ((await sha(code + ':' + pw)) !== info.pwHash) { netError('비밀번호가 맞지 않아요.'); return; }
+      }
+    }
     let gotState = false;
     const tr = await openTransport(code, false, (m) => {
       if (m && m.t === 'state' && m.s && typeof m.s === 'object') { gotState = true; onState(m.s); }
     }, (cid) => {
       if (lastState && (cid === lastState.hostCid || cid === '__host__')) {
-        toast('방장이 나갔어요', 'bad'); leaveNet(); closeSheet(); show('viewHome');
+        toast('방장이 나갔어요', 'bad'); leaveNet(); closeSheet(); closeModal(); show('viewHome');
       }
     });
+    solo = null; tickers = [netTicker]; stopRoomList();
     net = { isHost: false, code, send: tr.send, close: tr.close };
     for (let i = 0; i < 8 && !gotState && net; i++) {
       net.send({ t: 'join', cid: myCid, name });
@@ -1540,13 +1655,94 @@ async function joinRoom() {
     if (!gotState) { leaveNet(); throw new Error('no-host'); }
   } catch (e) {
     netError(connectErrorText(e));
-  } finally { $('btnJoin').disabled = false; }
+  }
 }
+
+// ---------- 방 만들기 / 방 목록 ----------
+function askPassword(roomName) {
+  return new Promise((resolve) => {
+    modal(`<h2>비밀번호 입력</h2><p class="note">${esc(roomName || '이 방')}은 비밀번호가 걸려 있어요.</p>
+      <input id="pwIn" type="password" maxlength="20" placeholder="비밀번호" aria-label="비밀번호">
+      <div class="row" style="justify-content:flex-end"><button class="btn ghost" id="pwCancel" type="button">취소</button><button class="btn primary" id="pwOk" type="button">들어가기</button></div>`, (el) => {
+      const inp = el.querySelector('#pwIn'); inp.focus();
+      const done = (v) => { closeModal(); resolve(v); };
+      el.querySelector('#pwOk').onclick = () => done(inp.value);
+      el.querySelector('#pwCancel').onclick = () => done(null);
+      inp.onkeydown = (e) => { if (e.key === 'Enter') done(inp.value); };
+    });
+  });
+}
+function openCreateForm() {
+  const name = myName();
+  modal(`<h2>방 만들기</h2>
+    <label class="note" for="cRoom">방 이름</label>
+    <input id="cRoom" maxlength="20" value="${esc(name)}의 방">
+    <label class="note" for="cGame">게임</label>
+    <select id="cGame"><option value="code">비밀 코드</option><option value="fence">울타리 치기</option></select>
+    <div class="seg" role="radiogroup" aria-label="공개 설정">
+      <button type="button" class="segb" data-v="open" aria-checked="true" role="radio">누구나 입장</button>
+      <button type="button" class="segb" data-v="lock" aria-checked="false" role="radio">🔒 비밀번호</button>
+    </div>
+    <input id="cPw" type="password" maxlength="20" placeholder="비밀번호" aria-label="비밀번호" hidden>
+    <div class="row" style="justify-content:flex-end"><button class="btn ghost" data-close type="button">취소</button><button class="btn primary" id="cGo" type="button">만들기</button></div>`, (el) => {
+    el.querySelector('#cGame').value = homeGame;
+    let lock = false;
+    el.querySelectorAll('.segb').forEach((b) => b.onclick = () => {
+      lock = b.dataset.v === 'lock';
+      el.querySelectorAll('.segb').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+      el.querySelector('#cPw').hidden = !lock; if (lock) el.querySelector('#cPw').focus();
+    });
+    el.querySelector('#cGo').onclick = async (ev) => {
+      const pw = lock ? el.querySelector('#cPw').value.trim() : '';
+      if (lock && !pw) { toast('비밀번호를 입력해 주세요', 'bad'); return; }
+      ev.target.disabled = true;
+      const roomName = (el.querySelector('#cRoom').value || '').trim().slice(0, 20) || `${name}의 방`;
+      closeModal();
+      await createRoom({ roomName, game: el.querySelector('#cGame').value, pw });
+    };
+  });
+}
+let roomListOff = null;
+function stopRoomList() { if (roomListOff) { roomListOff(); roomListOff = null; } }
+async function openRoomList() {
+  myName();
+  $('roomsErr').textContent = '';
+  show('viewRooms');
+  const list = $('roomList');
+  if (!useLobbyList()) {
+    list.innerHTML = '<p class="note">이 화면에서는 방 목록을 볼 수 없어요. 방장에게 받은 코드로 들어가 주세요.</p>';
+    return;
+  }
+  list.innerHTML = '<p class="note">방 목록을 불러오는 중…</p>';
+  try {
+    const db = await firebaseDb();
+    const q = db.ref('lobby').orderByChild('updatedAt').limitToLast(50);
+    const cb = (snap) => {
+      const rooms = [];
+      snap.forEach((c) => { const v = c.val(); if (v && fbNow() - (v.updatedAt || 0) < 120000) rooms.push({ code: c.key, ...v }); });
+      rooms.sort((a, b) => (a.phase === 'lobby' ? 0 : 1) - (b.phase === 'lobby' ? 0 : 1) || (b.createdAt || 0) - (a.createdAt || 0));
+      list.innerHTML = rooms.length ? rooms.map((r) => {
+        const playing = r.phase !== 'lobby', full = (r.players || 0) >= 6;
+        return `<button class="room" type="button" data-code="${esc(r.code)}" ${playing || full ? 'disabled' : ''}>
+          <span class="room-name">${r.locked ? '🔒 ' : ''}${esc(r.name || '이름 없는 방')}</span>
+          <span class="room-meta"><span class="chip">${GAMES[r.game] ? GAMES[r.game].name : '게임'}</span><span class="chip">${r.players || 1}/6명</span><span class="chip ${playing ? 'warn' : 'on'}">${playing ? '게임 중' : full ? '가득 참' : '대기 중'}</span></span>
+          <span class="room-host note">방장 ${esc(r.host || '')} · ${esc(r.code)}</span>
+        </button>`;
+      }).join('') : '<p class="note">열린 방이 없어요. 방을 직접 만들어 보세요!</p>';
+    };
+    q.on('value', cb, () => { list.innerHTML = '<p class="err">방 목록을 불러오지 못했어요.</p>'; });
+    stopRoomList(); roomListOff = () => q.off('value', cb);
+  } catch (e) { list.innerHTML = `<p class="err">${esc(connectErrorText(e))}</p>`; }
+}
+$('roomList').addEventListener('click', (e) => { const b = e.target.closest('.room'); if (b && !b.disabled) joinRoom(b.dataset.code); });
+
 function sendOrHandle(msg) { if (!net) return; if (net.isHost) hostOnMsg(msg); else net.send(msg); }
 
 // ---------- 상태 그리기 (방장/참가자 공통) ----------
 let lastState = null, lastSeed = null, lastEventId = 0, stateAt = 0;
 function onState(s) {
+  s.players = Array.isArray(s.players) ? s.players : Object.values(s.players || {});
+  s.locked = Array.isArray(s.locked) ? s.locked : Object.values(s.locked || {});
   const prev = lastState; lastState = s; stateAt = Date.now();
   if (!net || !GAMES[s.game]) return;
   if (s.event && s.event.id > lastEventId) {
@@ -1588,6 +1784,7 @@ function renderLobby(s) {
   closeModal(); closeSheet(); $('countdown').hidden = true; lastSeed = null;
   show('viewLobby');
   $('lobbyCode').textContent = net.code;
+  $('lobbyTitle').textContent = net.roomName ? `${net.locked ? '🔒 ' : ''}${net.roomName}` : '방 코드';
   $('lobbyPlayers').innerHTML = s.players.map((p) =>
     `<div class="player"><span>${esc(p.name)}${p.cid === myCid ? '<span class="you">나</span>' : ''}</span><span class="note">${p.cid === s.hostCid ? '방장' : ''}</span></div>`).join('');
   $('hostControls').hidden = !net.isHost;
@@ -1596,6 +1793,7 @@ function renderLobby(s) {
   $('btnStart').disabled = s.players.length < 2;
   $('lobbyNote').textContent = hasClaudeRoom()
     ? '이 페이지를 공유받은 사람만 참가할 수 있어요.'
+    : useLobbyList() ? '방 목록에서 이 방을 고르거나 코드를 입력하면 들어올 수 있어요. 게임이 끝날 때까지 이 화면을 켜 두세요.'
     : '친구에게 이 페이지 주소와 코드를 보내 주세요. 친구가 들어올 때까지 이 화면을 켜 두세요.';
 }
 function showOver(s) {
@@ -1671,8 +1869,9 @@ $('btnSeed').addEventListener('click', () => {
   const v = parseInt($('seedInput').value, 10);
   if (Number.isFinite(v) && v >= 0 && v < 4e6) startSolo(homeGame, v); else toast('문제 번호를 다시 확인해 주세요', 'bad');
 });
-$('btnHost').addEventListener('click', () => { solo = null; tickers = [netTicker]; createRoom(); });
-$('btnJoin').addEventListener('click', () => { solo = null; tickers = [netTicker]; joinRoom(); });
+$('btnCreate').addEventListener('click', openCreateForm);
+$('btnRooms').addEventListener('click', openRoomList);
+$('btnJoin').addEventListener('click', () => joinRoom($('joinCode').value));
 $('joinCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnJoin').click(); });
 $('gameSel').addEventListener('change', () => { if (host) { host.game = $('gameSel').value; hostPush(); } });
 $('btnStart').addEventListener('click', () => {
@@ -1684,10 +1883,10 @@ $('btnStart').addEventListener('click', () => {
 $('btnLeave').addEventListener('click', () => { leaveNet(); show('viewHome'); });
 $('btnCopyInvite').addEventListener('click', () => {
   if (!net) return;
-  copy(`🔐 유배지 퍼즐 대결 초대\n코드: ${net.code}` + (SHARE_URL ? `\n${SHARE_URL}` : '') + '\n접속해서 "참가하기"에 코드를 입력하세요!');
+  copy(`🔐 유배지 퍼즐 대결 초대${net.roomName ? ` · ${net.roomName}` : ''}\n코드: ${net.code}` + (SHARE_URL ? `\n${SHARE_URL}` : '') + '\n"방 들어가기"에서 이 방을 고르거나 코드를 입력하세요!');
 });
 $('btnHome').addEventListener('click', () => {
-  closeSheet(); closeModal(); leaveNet(); solo = null; fence = null; $('countdown').hidden = true;
+  closeSheet(); closeModal(); leaveNet(); stopRoomList(); solo = null; fence = null; $('countdown').hidden = true;
   renderHome(); show('viewHome');
   try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* 무시 */ }
 });
