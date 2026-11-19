@@ -1346,6 +1346,11 @@ async function openPeerTransport(code, isHost, onMsg, onLeft) {
     const peer = new Peer(id);
     const conns = new Map();
     await new Promise((res, rej) => { peer.on('open', res); peer.on('error', rej); });
+    // 휴대폰에서 다른 앱(카톡 등)으로 갔다 오면 서버 연결이 끊기므로 자동으로 다시 붙는다
+    const revive = () => { if (!peer.destroyed && peer.disconnected) { try { peer.reconnect(); } catch (e) { /* 다음 기회 */ } } };
+    peer.on('disconnected', () => setTimeout(revive, 500));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) revive(); });
+    setInterval(revive, 5000);
     peer.on('connection', (conn) => {
       conn.on('data', (d) => { if (d && d.cid) conns.set(conn, d.cid); onMsg(d); });
       conn.on('close', () => { const c = conns.get(conn); conns.delete(conn); if (c) onLeft(c); });
@@ -1358,11 +1363,15 @@ async function openPeerTransport(code, isHost, onMsg, onLeft) {
   const peer = new Peer();
   await new Promise((res, rej) => { peer.on('open', res); peer.on('error', rej); });
   const conn = peer.connect(id, { reliable: true });
-  await new Promise((res, rej) => {
-    conn.on('open', res);
-    peer.on('error', rej);
-    setTimeout(() => rej(new Error('timeout')), 9000);
-  });
+  try {
+    await new Promise((res, rej) => {
+      conn.on('open', res);
+      conn.on('error', () => rej(new Error('blocked')));
+      peer.on('error', rej);
+      // 방은 찾았는데 15초 안에 연결이 안 열리면 네트워크가 막힌 것
+      setTimeout(() => rej(new Error('blocked')), 15000);
+    });
+  } catch (e) { peer.destroy(); throw e; }
   conn.on('data', onMsg);
   conn.on('close', () => onLeft('__host__'));
   return { send: (msg) => conn.send(msg), close: () => peer.destroy() };
@@ -1502,7 +1511,8 @@ async function createRoom() {
 function connectErrorText(e) {
   const m = (e && (e.type || e.code || e.message)) || '';
   if (m === 'room-unavailable' || m === 'not_permitted' || m === 'not_granted') return '이 화면에서는 실시간 대결에 연결할 수 없어요. 페이지를 공유받은 사람(참여자 이상)만 대결할 수 있어요.';
-  if (m === 'peer-unavailable' || m === 'timeout' || m === 'no-host') return '그 코드의 방을 찾을 수 없어요. 코드를 다시 확인해 주세요.';
+  if (m === 'peer-unavailable' || m === 'no-host') return '그 코드의 방이 없어요. 코드가 맞는지, 방장이 대기실 화면을 켜 두고 있는지 확인해 주세요.';
+  if (m === 'blocked' || m === 'timeout') return '방은 찾았지만 연결이 막혔어요. 회사·학교 와이파이나 VPN이면 휴대폰 데이터로 다시 시도해 주세요.';
   if (m === 'peer-load' || m === 'network' || m === 'server-error') return '대결 서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
   return '연결에 실패했어요. 잠시 후 다시 시도해 주세요.';
 }
@@ -1586,7 +1596,7 @@ function renderLobby(s) {
   $('btnStart').disabled = s.players.length < 2;
   $('lobbyNote').textContent = hasClaudeRoom()
     ? '이 페이지를 공유받은 사람만 참가할 수 있어요.'
-    : '친구에게 이 페이지 주소와 코드를 보내 주세요.';
+    : '친구에게 이 페이지 주소와 코드를 보내 주세요. 친구가 들어올 때까지 이 화면을 켜 두세요.';
 }
 function showOver(s) {
   if (!$('modal').hidden && $('modalBody').dataset.kind === 'over') return;
