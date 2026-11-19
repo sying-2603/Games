@@ -91,6 +91,8 @@ body.playing .brand h1 { font-size: 19px; }
 .lv span { font-size: 12px; color: var(--muted); }
 .lv .stars { color: var(--copper); letter-spacing: 2px; font-size: 13px; }
 .lv:hover { border-color: var(--copper); }
+.levels.sizes .lv { padding: 10px 4px; }
+.levels.sizes .lv b { font-size: 16px; }
 .code-input { text-transform: uppercase; letter-spacing: .3em; font-weight: 600; text-align: center; max-width: 160px; }
 .big-code { font-family: var(--font-display); font-size: 44px; letter-spacing: .25em; color: var(--glow); text-align: center; font-weight: 700; }
 .players { display: grid; gap: 6px; }
@@ -181,8 +183,11 @@ body.playing .brand h1 { font-size: 19px; }
 .code-board { display: contents; }
 
 /* 울타리 치기 판: 방송처럼 흰 판 위 보라 점과 선 */
-.fence-board { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.fence-board { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
 .fence-area { flex: 1; min-height: 0; display: grid; place-items: center; }
+.fence-area.zoomed { overflow: auto; place-items: start; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.fence-area.zoomed #fenceSvg { touch-action: pan-x pan-y; }
+.zoom-btn { position: absolute; top: 6px; right: 6px; z-index: 2; padding: 6px 10px; font-size: 13px; border-radius: 10px; background: rgba(20,28,28,.85); }
 #fenceSvg { display: block; touch-action: manipulation; cursor: pointer; user-select: none; -webkit-user-select: none; }
 #fenceSvg .f-bg { fill: #f1eef6; }
 #fenceSvg .f-dot { fill: #5a2fa0; }
@@ -196,6 +201,9 @@ body.playing .brand h1 { font-size: 19px; }
 .fence-cap { margin: 0; text-align: center; font-size: 11.5px; color: var(--muted); }
 .fence-ctl { display: flex; gap: 8px; }
 .fence-ctl .btn { padding: 10px 12px; font-size: 14px; }
+.fence-ctl .mode-x[aria-pressed="true"] { background: #c0392b; border-color: #e0574a; color: #fff; }
+#fenceSvg .f-x { stroke: #c0392b; stroke-width: 6; stroke-linecap: round; }
+#fenceSvg { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 
 /* 버저 바 */
 .dock { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; }
@@ -270,11 +278,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       </div>
       <h2>혼자 풀기</h2>
       <p id="soloBlurb"></p>
-      <div class="levels">
-        <button class="lv" type="button" data-level="1"><span class="stars">★</span><b>쉬움</b><span class="lv-sub"></span></button>
-        <button class="lv" type="button" data-level="2"><span class="stars">★★</span><b>보통</b><span class="lv-sub"></span></button>
-        <button class="lv" type="button" data-level="3"><span class="stars">★★★</span><b>어려움</b><span class="lv-sub"></span></button>
-      </div>
+      <div class="levels" id="levels"></div>
       <div class="row">
         <input id="seedInput" inputmode="numeric" placeholder="문제 번호로 풀기" aria-label="문제 번호">
         <button class="btn" id="btnSeed" type="button">시작</button>
@@ -328,13 +332,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
           </select>
         </div>
         <div class="row">
-          <label for="levelSel" class="note">난이도</label>
-          <select id="levelSel">
-            <option value="1">쉬움</option>
-            <option value="2" selected>보통</option>
-            <option value="3">어려움</option>
-            <option value="0">섞어서</option>
-          </select>
+          <label for="levelSel" class="note" id="levelLabel">난이도</label>
+          <select id="levelSel"></select>
           <label for="targetSel" class="note">먼저</label>
           <select id="targetSel">
             <option value="1">1점</option>
@@ -366,7 +365,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       </div>
       <div class="fence-board" id="fenceBoard" hidden>
         <div class="fence-area" id="fenceArea"><svg id="fenceSvg" role="img" aria-label="울타리 치기 게임판"></svg></div>
-        <p class="fence-cap">점 사이 빈 곳을 누르면 선이 생기고, 선을 누르면 지워져요</p>
+        <button class="btn zoom-btn" id="btnZoom" type="button" aria-pressed="false" hidden>🔍 확대</button>
+        <p class="fence-cap">빈 곳을 누르면 선, 선을 누르면 지우기 · 길게 누르면 ✕(안 긋는 선)</p>
       </div>
     </div>
     <div class="dock" id="dock">
@@ -376,6 +376,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         <span class="buzz-note" id="buzzNote">오답 시 +30초</span>
       </div>
       <div class="fence-ctl" id="fenceCtl" hidden>
+        <button class="btn mode-x" id="btnMarkX" type="button" aria-pressed="false" title="안 긋는 선을 ✕로 표시해요 (선 모드에서는 길게 누르기)">✕ 표시</button>
         <button class="btn" id="btnUndo" type="button">되돌리기</button>
         <button class="btn" id="btnClearFence" type="button">모두 지우기</button>
       </div>
@@ -696,11 +697,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       [3, null, 3, null, 0],
     ],
   };
-  const LEVELS = {
-    1: { name: '쉬움', R: 5, C: 5, keep: 0.62 },
-    2: { name: '보통', R: 6, C: 6, keep: 0.42 },
-    3: { name: '어려움', R: 7, C: 7, keep: 0 }, // 0 = 유일해가 유지되는 한 최대한 지움
-  };
+  // 맵 크기별 (7×7 ~ 15×15). keep = 남길 숫자 비율 하한 (0 = 유일해가 유지되는 한 최대한 지움)
+  const SIZES = [7, 8, 9, 10, 11, 12, 13, 14, 15];
+  const LEVELS = {};
+  for (const n of SIZES) LEVELS[n] = { name: n + '×' + n, R: n, C: n, keep: 0 };
 
   function rng(seed) {
     let a = seed >>> 0;
@@ -742,10 +742,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   }
 
   // ---------- 풀이기: 해의 개수를 limit까지 센다 ----------
-  function countSolutions(R, C, clues, limit = 2) {
+  function countSolutions(R, C, clues, limit = 2, maxNodes = Infinity) {
     const g = geo(R, C);
     const flat = clues.flat();
-    let found = 0, first = null;
+    let found = 0, first = null, nodes = 0, aborted = false;
 
     function propagate(st, queue) {
       // queue: 바뀐 변 목록 → 관련 칸/점 점검
@@ -823,7 +823,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     }
 
     function solve(st, changed) {
-      if (found >= limit) return;
+      if (found >= limit || aborted) return;
+      if (++nodes > maxNodes) { aborted = true; return; }
       if (!propagate(st, changed)) return;
       const lc = loopCheck(st);
       if (lc === -1) return;
@@ -839,7 +840,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     const init = [];
     for (let e = 0; e < g.E; e++) init.push(e);
     solve(st, init);
-    return { count: found, solution: first };
+    return { count: aborted ? -1 : found, solution: first, nodes };
   }
 
   // ---------- 무작위 울타리(영역 경계) 만들기 ----------
@@ -888,9 +889,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     return true;
   }
 
+  const NODE_CAP = 300; // 너무 오래 걸리는 판단은 '유일하지 않음'으로 보고 숫자를 남긴다
   function generate(seed) {
     const lvNum = Math.floor(seed / 1e6);
-    const lv = LEVELS[lvNum] ? lvNum : 2, L = LEVELS[lv];
+    const lv = LEVELS[lvNum] ? lvNum : 7, L = LEVELS[lv];
     const r = rng(seed * 104729 + 7);
     const { R, C } = L, g = geo(R, C);
     for (let attempt = 0; attempt < 30; attempt++) {
@@ -913,9 +915,9 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         if (kept <= minKeep) break;
         const y = Math.floor(i / C), x = i % C, v = clues[y][x];
         clues[y][x] = null;
-        if (countSolutions(R, C, clues, 2).count === 1) kept--; else clues[y][x] = v;
+        if (countSolutions(R, C, clues, 2, NODE_CAP).count === 1) kept--; else clues[y][x] = v;
       }
-      const sol = countSolutions(R, C, clues, 2);
+      const sol = countSolutions(R, C, clues, 2, NODE_CAP * 4);
       if (sol.count !== 1) continue;
       return { seed, level: lv, levelName: L.name, R, C, clues, solution: edgesOf(sol.solution) };
     }
@@ -959,7 +961,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     if (!cache.has(seed)) cache.set(seed, seed === 0 ? original() : generate(seed));
     return cache.get(seed);
   }
-  const api = { LEVELS, geo, puzzle, check, countSolutions, original, generate };
+  const api = { LEVELS, SIZES, geo, puzzle, check, countSolutions, original, generate };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FENCE = api;
 })(this);
@@ -988,9 +990,15 @@ const PENALTY_MS = 30000;  // 혼자 풀기 오답 페널티 (비밀 코드)
 // ---------- 게임 목록 ----------
 const GAMES = {
   code: {
-    id: 'code', name: '비밀 코드', hash: 'p', roundMs: 300000,
+    id: 'code', name: '비밀 코드', hash: 'p',
     puzzle: (s) => SC.puzzle(s), makeSeed: (lv) => SC.makeSeed(lv),
-    levels: ['조건 3~4개', '방송과 비슷', '조건 5~6개'],
+    levels: [
+      { v: 1, name: '쉬움', sub: '조건 3~4개', stars: '★' },
+      { v: 2, name: '보통', sub: '방송과 비슷', stars: '★★' },
+      { v: 3, name: '어려움', sub: '조건 5~6개', stars: '★★★' },
+    ],
+    levelLabel: '난이도', defaultLevel: 2,
+    roundMs: () => 300000,
     blurb: '26장의 카드 중 조건을 모두 만족하는 4장을 찾아 버저를 누르세요.',
     rules: [
       'A~Z 26장의 카드에 숫자(1~26), 색상, 도형이 있어요.',
@@ -1000,9 +1008,12 @@ const GAMES = {
     ],
   },
   fence: {
-    id: 'fence', name: '울타리 치기', hash: 'f', roundMs: 600000,
+    id: 'fence', name: '울타리 치기', hash: 'f',
     puzzle: (s) => FENCE.puzzle(s), makeSeed: (lv) => lv * 1e6 + 1 + Math.floor(Math.random() * 999998),
-    levels: ['5×5 판', '6×6 판', '7×7 판'],
+    levels: FENCE.SIZES.map((n) => ({ v: n, name: `${n}×${n}`, sub: n <= 9 ? '가볍게' : n <= 12 ? '집중' : '긴 승부' })),
+    levelLabel: '판 크기', defaultLevel: 9,
+    // 큰 판일수록 시간을 넉넉히 (최소 10분, 15×15는 15분)
+    roundMs: (lv) => Math.max(600000, (lv || 9) * (lv || 9) * 4000),
     blurb: '숫자를 참고해 점과 점을 이어 하나의 닫힌 울타리를 완성하세요.',
     rules: [
       '게임판의 숫자를 참고하여 점과 점을 이어 하나의 선으로 울타리를 완성해요.',
@@ -1010,6 +1021,10 @@ const GAMES = {
       '숫자가 없는 칸은 선의 개수 정보가 공개되지 않은 영역이에요.',
       '연결된 모든 선은 하나로 이어져야 해요. 여러 개로 분리된 울타리는 허용되지 않아요.',
       '끊기지 않는 단 하나의 닫힌 울타리를 완성해야 해요. 게임판의 모든 점을 사용할 필요는 없어요.',
+    ],
+    tips: [
+      '빈 곳을 누르면 선이 그어지고, 선을 누르면 지워져요.',
+      '선이 안 들어갈 자리는 "✕ 표시"를 켜고 누르거나, 길게 눌러 ✕로 표시할 수 있어요.',
     ],
   },
 };
@@ -1043,6 +1058,7 @@ function setMode(game) {
 }
 
 // 판을 남은 공간에 꼭 맞게
+let fenceZoom = false; // 큰 울타리 판 확대 여부
 function fitBoard() {
   if ($('viewGame').hidden) return;
   if (curGame === 'code') {
@@ -1055,7 +1071,7 @@ function fitBoard() {
     grid.style.width = Math.floor(cw * 6 + gap * 5) + 'px';
   } else {
     const area = $('fenceArea'), svg = $('fenceSvg');
-    const s = Math.floor(Math.min(area.clientWidth, area.clientHeight));
+    const s = Math.floor(Math.min(area.clientWidth, area.clientHeight) * (fenceZoom ? 2 : 1));
     if (s > 0) { svg.style.width = s + 'px'; svg.style.height = s + 'px'; }
   }
 }
@@ -1083,7 +1099,7 @@ async function copy(text) {
   }
 }
 function setMeta(p, extra) {
-  $('pzMeta').innerHTML = `<span class="chip">${GAMES[curGame].name}</span><span class="chip lv${p.isOriginal ? 2 : p.level}">${p.levelName}</span>` +
+  $('pzMeta').innerHTML = `<span class="chip">${GAMES[curGame].name}</span><span class="chip lv${p.isOriginal ? 2 : p.level > 3 ? (p.level <= 9 ? 1 : p.level <= 12 ? 2 : 3) : p.level}">${p.levelName}</span>` +
     (p.isOriginal ? '' : `<span class="chip">#${p.seed}</span>`) + (extra || '');
 }
 const puzzleLabel = (game, p) => `${GAMES[game].name} ${p.isOriginal ? '방송 예시 문제' : `${p.levelName} #${p.seed}`}`;
@@ -1175,7 +1191,10 @@ const U = 100, PAD = 46; // SVG 좌표: 칸 한 변 100
 let fence = null; // { p, on:Set, hist:[], frozen, onSolved }
 function renderFence(p, extra, onSolved) {
   setMode('fence');
-  fence = { p, on: new Set(), hist: [], frozen: false, onSolved };
+  fence = { p, on: new Set(), x: new Set(), hist: [], frozen: false, onSolved };
+  setXMode(false);
+  setZoom(false);
+  $('btnZoom').hidden = p.R < 10; // 큰 판에서만 확대 버튼
   const W = p.C * U + PAD * 2, Hh = p.R * U + PAD * 2;
   $('fenceSvg').setAttribute('viewBox', `0 0 ${W} ${Hh}`);
   setMeta(p, extra);
@@ -1194,6 +1213,14 @@ function drawFence(solutionEdges) {
     if (e < g.H) { const r = Math.floor(e / p.C), c = e % p.C; x1 = X(c); y1 = Y(r); x2 = X(c + 1); y2 = y1; }
     else { const k = e - g.H, r = Math.floor(k / (p.C + 1)), c = k % (p.C + 1); x1 = X(c); y1 = Y(r); x2 = x1; y2 = Y(r + 1); }
     parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="f-line${solutionEdges ? ' sol' : ''}"/>`);
+  }
+  // 안 긋는 선 표시 (✕)
+  if (!solutionEdges) for (const e of fence.x) {
+    let cx, cy;
+    if (e < g.H) { const r = Math.floor(e / p.C), c = e % p.C; cx = X(c) + U / 2; cy = Y(r); }
+    else { const k = e - g.H, r = Math.floor(k / (p.C + 1)), c = k % (p.C + 1); cx = X(c); cy = Y(r) + U / 2; }
+    const d = 11;
+    parts.push(`<path d="M${cx - d} ${cy - d}L${cx + d} ${cy + d}M${cx + d} ${cy - d}L${cx - d} ${cy + d}" class="f-x"/>`);
   }
   // 숫자: 넘치면 빨강, 딱 맞으면 흐리게
   p.clues.forEach((row, r) => row.forEach((k, c) => {
@@ -1225,26 +1252,79 @@ function edgeAt(clientX, clientY) {
   if (c1 >= 0 && c1 <= p.C && r1 >= 0 && r1 < p.R) { const d = Math.abs(fx - c1); if (d < bd) { bd = d; best = g.H + r1 * (p.C + 1) + c1; } }
   return best;
 }
+// 큰 판 확대: 판을 2배로 키우고 손가락으로 밀어서 이동
+function setZoom(v) {
+  const area = $('fenceArea');
+  const cx = area.scrollLeft + area.clientWidth / 2, cy = area.scrollTop + area.clientHeight / 2;
+  const was = fenceZoom; fenceZoom = !!v;
+  area.classList.toggle('zoomed', fenceZoom);
+  $('btnZoom').setAttribute('aria-pressed', String(fenceZoom));
+  $('btnZoom').textContent = fenceZoom ? '🔍 전체 보기' : '🔍 확대';
+  fitBoard();
+  if (fenceZoom && !was) { area.scrollLeft = (area.scrollWidth - area.clientWidth) / 2; area.scrollTop = (area.scrollHeight - area.clientHeight) / 2; }
+  else if (fenceZoom) { area.scrollLeft = cx - area.clientWidth / 2; area.scrollTop = cy - area.clientHeight / 2; }
+}
+$('btnZoom').addEventListener('click', () => setZoom(!fenceZoom));
+
+// 변 상태: 0 빈칸, 1 선, 2 ✕(안 긋는 선)
+let xMode = false;
+function setXMode(v) {
+  xMode = !!v;
+  $('btnMarkX').setAttribute('aria-pressed', String(xMode));
+  $('btnMarkX').textContent = xMode ? '✕ 표시 중' : '✕ 표시';
+}
+$('btnMarkX').addEventListener('click', () => setXMode(!xMode));
+const edgeState = (ed) => (fence.on.has(ed) ? 1 : fence.x.has(ed) ? 2 : 0);
+function putEdge(ed, v) {
+  fence.on.delete(ed); fence.x.delete(ed);
+  if (v === 1) fence.on.add(ed); else if (v === 2) fence.x.add(ed);
+}
+function setEdge(ed, v) {
+  const prev = edgeState(ed);
+  if (prev === v) return;
+  putEdge(ed, v);
+  fence.hist.push({ ed, prev });
+  drawFence();
+  if (v === 1 && FENCE.check(fence.p, [...fence.on]) && fence.onSolved) fence.onSolved([...fence.on]);
+}
+// 선 모드: 빈칸→선, 선→빈칸, ✕→빈칸 / ✕ 모드: 빈칸·선→✕, ✕→빈칸
+function tapEdge(ed, asX) {
+  const cur = edgeState(ed);
+  if (asX) setEdge(ed, cur === 2 ? 0 : 2);
+  else setEdge(ed, cur === 0 ? 1 : 0);
+}
+// 길게 누르면 ✕ (선 모드에서도)
+let pressT = null, pressEd = -1, pressDone = false;
+$('fenceSvg').addEventListener('pointerdown', (e) => {
+  if (!fence || fence.frozen) return;
+  pressDone = false; pressEd = edgeAt(e.clientX, e.clientY);
+  clearTimeout(pressT);
+  if (pressEd >= 0) pressT = setTimeout(() => {
+    pressDone = true; tapEdge(pressEd, !xMode);
+    if (navigator.vibrate) try { navigator.vibrate(15); } catch (er) { /* 무시 */ }
+  }, 450);
+});
+const cancelPress = () => clearTimeout(pressT);
+['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => $('fenceSvg').addEventListener(t, cancelPress));
+$('fenceSvg').addEventListener('pointermove', (e) => {
+  if (pressEd >= 0 && edgeAt(e.clientX, e.clientY) !== pressEd) cancelPress();
+});
+$('fenceSvg').addEventListener('contextmenu', (e) => e.preventDefault());
 $('fenceSvg').addEventListener('click', (e) => {
   if (!fence || fence.frozen) return;
+  if (pressDone) { pressDone = false; return; }
   const ed = edgeAt(e.clientX, e.clientY); if (ed < 0) return;
-  toggleEdge(ed);
+  tapEdge(ed, xMode);
 });
-function toggleEdge(ed) {
-  if (fence.on.has(ed)) fence.on.delete(ed); else fence.on.add(ed);
-  fence.hist.push(ed);
-  drawFence();
-  if (FENCE.check(fence.p, [...fence.on]) && fence.onSolved) fence.onSolved([...fence.on]);
-}
 $('btnUndo').addEventListener('click', () => {
   if (!fence || fence.frozen || !fence.hist.length) return;
-  const ed = fence.hist.pop();
-  if (fence.on.has(ed)) fence.on.delete(ed); else fence.on.add(ed);
+  const h = fence.hist.pop();
+  putEdge(h.ed, h.prev);
   drawFence();
 });
 $('btnClearFence').addEventListener('click', () => {
-  if (!fence || fence.frozen || !fence.on.size) return;
-  fence.on.clear(); fence.hist = []; drawFence();
+  if (!fence || fence.frozen || (!fence.on.size && !fence.x.size)) return;
+  fence.on.clear(); fence.x.clear(); fence.hist = []; drawFence();
 });
 
 // ---------- 공통 타이머 루프 ----------
@@ -1312,13 +1392,14 @@ function soloFinish(code) {
   const label = puzzleLabel(game, p);
   const share = `🔐 ${label}를 ${fmt(ms)} 만에 풀었어요${solo.wrong ? ` (오답 ${solo.wrong}번)` : ''}!` +
     (SHARE_URL ? `\n같은 문제 도전 👉 ${SHARE_URL}#${G.hash}-${solo.seed}` : `\n문제 번호 ${solo.seed}로 같은 문제에 도전할 수 있어요`);
-  const nextLv = p.isOriginal ? 2 : p.level;
+  const nextLv = p.isOriginal ? G.defaultLevel : p.level;
+  const nextName = (G.levels.find((l) => l.v === nextLv) || {}).name || '';
   setTimeout(() => modal(`<h2>${game === 'code' ? `정답! ${esc(code)}` : '울타리 완성!'}</h2>
     <div class="result-big">${fmt(ms)}</div>
     <p class="note" style="text-align:center">${solo.wrong ? `오답 ${solo.wrong}번 (+${solo.wrong * 30}초) 포함` : game === 'code' ? '오답 없이 맞혔어요' : label}${isBest ? ' · 이 문제 최고 기록' : ''}</p>
     <div class="row" style="justify-content:center">
       <button class="btn" id="mShare" type="button">결과 복사</button>
-      <button class="btn primary" id="mNext" type="button">${['', '쉬움', '보통', '어려움'][nextLv]} 새 문제</button>
+      <button class="btn primary" id="mNext" type="button">${nextName} 새 문제</button>
       <button class="btn ghost" data-close type="button">판 보기</button>
     </div>`, (el) => {
     el.querySelector('#mShare').onclick = () => copy(share);
@@ -1563,7 +1644,9 @@ function hostJudge(cid, code) {
 }
 function hostNextRound() {
   host.round++;
-  host.seed = GAMES[host.game].makeSeed(host.level || 1 + Math.floor(Math.random() * 3));
+  const G = GAMES[host.game];
+  host.curLevel = host.level || G.levels[Math.floor(Math.random() * G.levels.length)].v;
+  host.seed = G.makeSeed(host.curLevel);
   host.locked = []; host.buzz = null; host.reveal = null;
   host.phase = 'countdown'; host.cdEnd = Date.now() + 3000; host.roundEnd = null;
   hostPush();
@@ -1572,7 +1655,7 @@ function hostTick() {
   if (!host) return;
   const now = Date.now();
   if (host.phase === 'countdown' && now >= host.cdEnd) {
-    host.phase = 'play'; host.cdEnd = null; host.roundEnd = now + GAMES[host.game].roundMs; hostPush();
+    host.phase = 'play'; host.cdEnd = null; host.roundEnd = now + GAMES[host.game].roundMs(host.curLevel); hostPush();
   } else if (host.phase === 'play') {
     if (host.buzz && now >= host.buzz.end) hostJudge(host.buzz.cid, '');
     else if (!host.buzz && now >= host.roundEnd) {
@@ -1600,8 +1683,8 @@ async function createRoom(opts) {
     }
     solo = null; tickers = [netTicker]; stopRoomList();
     net = { isHost: true, code, roomName: opts.roomName, locked: !!opts.pw, send: tr.send, close: tr.close, updateLobby: tr.updateLobby };
-    host = { phase: 'lobby', game, target: 2, level: 2, round: 0, seed: 0, players: [{ cid: myCid, name, score: 0 }], locked: [], buzz: null, reveal: null, event: null, roundEnd: null, cdEnd: null };
-    $('gameSel').value = game; $('levelSel').value = '2'; $('targetSel').value = '2';
+    host = { phase: 'lobby', game, target: 2, level: GAMES[game].defaultLevel, round: 0, seed: 0, players: [{ cid: myCid, name, score: 0 }], locked: [], buzz: null, reveal: null, event: null, roundEnd: null, cdEnd: null };
+    $('gameSel').value = game; fillLevelSel(game); $('targetSel').value = '2';
     clearInterval(hostLoop); hostLoop = setInterval(hostTick, 200);
     clearInterval(resendT);
     if (!FIREBASE_CONFIG || hasClaudeRoom()) resendT = setInterval(() => { if (host && net) net.send({ t: 'state', s: hostState() }); }, 2500);
@@ -1850,7 +1933,9 @@ function renderHome() {
   const G = GAMES[homeGame];
   document.querySelectorAll('.gtab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.game === homeGame)));
   $('soloBlurb').textContent = G.blurb;
-  document.querySelectorAll('.lv').forEach((b) => { b.querySelector('.lv-sub').textContent = G.levels[+b.dataset.level - 1]; });
+  const box = $('levels');
+  box.classList.toggle('sizes', homeGame === 'fence');
+  box.innerHTML = G.levels.map((l) => `<button class="lv" type="button" data-level="${l.v}">${l.stars ? `<span class="stars">${l.stars}</span>` : ''}<b>${l.name}</b><span class="lv-sub">${l.sub}</span></button>`).join('');
 }
 document.querySelectorAll('.gtab').forEach((b) => b.addEventListener('click', () => {
   homeGame = b.dataset.game; store.set('homeGame', homeGame); renderHome();
@@ -1864,16 +1949,28 @@ $('buzzer').addEventListener('click', () => {
   sendOrHandle({ t: 'buzz', cid: myCid });
 });
 $('btnOriginal').addEventListener('click', () => startSolo(homeGame, 0));
-document.querySelectorAll('.lv').forEach((b) => b.addEventListener('click', () => startSolo(homeGame, GAMES[homeGame].makeSeed(+b.dataset.level))));
+$('levels').addEventListener('click', (e) => {
+  const b = e.target.closest('.lv'); if (!b) return;
+  startSolo(homeGame, GAMES[homeGame].makeSeed(+b.dataset.level));
+});
 $('btnSeed').addEventListener('click', () => {
   const v = parseInt($('seedInput').value, 10);
-  if (Number.isFinite(v) && v >= 0 && v < 4e6) startSolo(homeGame, v); else toast('문제 번호를 다시 확인해 주세요', 'bad');
+  if (Number.isFinite(v) && v >= 0 && v < 1.6e7 && (v === 0 || GAMES[homeGame].levels.some((l) => l.v === Math.floor(v / 1e6)))) startSolo(homeGame, v); else toast('문제 번호를 다시 확인해 주세요', 'bad');
 });
 $('btnCreate').addEventListener('click', openCreateForm);
 $('btnRooms').addEventListener('click', openRoomList);
 $('btnJoin').addEventListener('click', () => joinRoom($('joinCode').value));
 $('joinCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnJoin').click(); });
-$('gameSel').addEventListener('change', () => { if (host) { host.game = $('gameSel').value; hostPush(); } });
+function fillLevelSel(game, keep) {
+  const G = GAMES[game], sel = $('levelSel');
+  $('levelLabel').textContent = G.levelLabel;
+  sel.innerHTML = G.levels.map((l) => `<option value="${l.v}">${l.name}</option>`).join('') + '<option value="0">섞어서</option>';
+  sel.value = keep != null && [...sel.options].some((o) => o.value === String(keep)) ? String(keep) : String(G.defaultLevel);
+}
+$('gameSel').addEventListener('change', () => {
+  fillLevelSel($('gameSel').value);
+  if (host) { host.game = $('gameSel').value; host.level = +$('levelSel').value; hostPush(); }
+});
 $('btnStart').addEventListener('click', () => {
   if (!host || host.players.length < 2) return;
   host.game = $('gameSel').value; host.target = +$('targetSel').value; host.level = +$('levelSel').value;
@@ -1893,14 +1990,14 @@ $('btnHome').addEventListener('click', () => {
 $('btnRules').addEventListener('click', () => {
   const inGame = !$('viewGame').hidden;
   const list = inGame ? [curGame] : ['code', 'fence'];
-  modal(`<h2>규칙</h2>${list.map((g) => `<h3 style="font-size:16px;margin-top:4px">${GAMES[g].name}</h3><ul>${GAMES[g].rules.map((r) => `<li>${r}</li>`).join('')}</ul>`).join('')}
+  modal(`<h2>규칙</h2>${list.map((g) => `<h3 style="font-size:16px;margin-top:4px">${GAMES[g].name}</h3><ul>${GAMES[g].rules.map((r) => `<li>${r}</li>`).join('')}</ul>${GAMES[g].tips ? `<p class="note">조작: ${GAMES[g].tips.join(' ')}</p>` : ''}`).join('')}
     <button class="btn" data-close type="button">닫기</button>`);
 });
 
 // ---------- 시작 ----------
 $('nameInput').value = store.get('name', '');
 renderHome();
-const m = /^#([pf])-(\d{1,7})$/.exec(location.hash);
+const m = /^#([pf])-(\d{1,8})$/.exec(location.hash);
 if (m) startSolo(m[1] === 'p' ? 'code' : 'fence', parseInt(m[2], 10)); else show('viewHome');
 })();
 
