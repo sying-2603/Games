@@ -239,6 +239,27 @@ body.answering .board { box-shadow: inset 0 0 0 2px var(--copper), 0 12px 30px r
 .buzz-note { font-size: 11.5px; color: var(--muted); }
 
 /* 결과/모달 */
+.cmp { position: fixed; inset: 0; z-index: 40; background: rgba(5,8,9,.82); display: grid; place-items: center; padding: 10px; }
+.cmp-box { width: min(760px, 100%); max-height: 96vh; overflow: auto; background: var(--slab); border-radius: 16px; padding: 14px; display: grid; gap: 8px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.cmp-box h2 { font-size: 19px; color: var(--copper); margin: 0; }
+.cmp-box .note { margin: 0; }
+.cmp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.cmp-card { margin: 0; background: var(--stone); border: 2px solid transparent; border-radius: 12px; padding: 6px; display: grid; gap: 4px; }
+.cmp-card.win { border-color: #2f9a3c; }
+.cmp-card.me { box-shadow: 0 0 0 1px var(--copper) inset; }
+.cmp-card.answer { border-color: #2f9a3c; border-style: dashed; }
+.cmp-card figcaption { display: grid; gap: 1px; font-size: 13px; text-align: center; }
+.cmp-card figcaption span { color: var(--muted); font-size: 12px; }
+.mini-fence { width: 100%; height: auto; display: block; }
+.mini-fence .f-bg { fill: #f1eef6; } .mini-fence .f-dot { fill: #5a2fa0; }
+.mini-fence .f-line { stroke: #5a2fa0; stroke-width: 13; stroke-linecap: round; } .mini-fence .f-line.sol { stroke: #2f9a3c; }
+.mini-fence .f-num { fill: #4b2690; font-family: var(--font-display); font-weight: 700; font-size: 62px; text-anchor: middle; dominant-baseline: central; }
+.mini-fence .f-num.done { fill: #a99cc4; } .mini-fence .f-num.over { fill: #e0413a; }
+.mini-wait { aspect-ratio: 1; border-radius: 10px; background: rgba(255,255,255,.06); }
+.cmp-foot { justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.cmp.peek { background: transparent; pointer-events: none; place-items: end center; }
+.cmp.peek .cmp-box { pointer-events: auto; }
+.cmp.peek .cmp-box > :not(.cmp-foot) { display: none; }
 .modal-bg { position: fixed; inset: 0; background: rgba(5,8,9,.75); z-index: 50; display: grid; place-items: center; padding: 16px; }
 .modal { width: min(520px, 100%); max-height: 88vh; overflow: auto; background: var(--slab); border-radius: 16px; padding: 20px; display: grid; gap: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
 .modal h2 { font-size: 22px; color: var(--copper); }
@@ -246,6 +267,11 @@ body.answering .board { box-shadow: inset 0 0 0 2px var(--copper), 0 12px 30px r
 .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; margin-right: 4px; vertical-align: 1px; }
 .tag.show { background: rgba(217,138,78,.2); color: var(--copper); }
 .tag.mine { background: rgba(142,240,122,.15); color: var(--glow); }
+.rec-table { display: grid; gap: 6px; margin: 2px 0; }
+.rec-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--stone); border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+.rec-row b { font-variant-numeric: tabular-nums; }
+.rec-row .tag { font-size: 12px; color: var(--glow); font-weight: 700; }
+.rec-row .sub { color: var(--muted); font-size: 12px; }
 .result-big { font-family: var(--font-display); font-size: 36px; text-align: center; color: var(--glow); font-weight: 700; font-variant-numeric: tabular-nums; }
 .toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 60; background: var(--ink); color: #111; padding: 9px 16px; border-radius: 999px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.4); max-width: calc(100% - 24px); text-align: center; }
 .toast.bad { background: var(--danger); color: #fff; }
@@ -277,7 +303,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         <button class="gtab" role="tab" type="button" data-game="code">비밀 코드</button>
         <button class="gtab" role="tab" type="button" data-game="fence">울타리 치기</button>
       </div>
-      <h2>혼자 풀기</h2>
+      <h2>기록 세우기</h2>
       <p id="soloBlurb"></p>
       <div class="levels" id="levels"></div>
       <div class="row">
@@ -402,6 +428,18 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 </div>
 
 <div class="countdown" id="countdown" hidden></div>
+<div class="cmp" id="cmp" hidden>
+  <div class="cmp-box">
+    <h2 id="cmpTitle">라운드 결과</h2>
+    <p class="note" id="cmpScores"></p>
+    <div class="cmp-grid" id="cmpGrid"></div>
+    <div class="row cmp-foot">
+      <button class="btn ghost" id="btnCmpHide" type="button">게임판 보기</button>
+      <span class="note" id="cmpWait">방장이 '다음으로'를 누르면 넘어가요</span>
+      <button class="btn primary" id="btnCmpNext" type="button">다음으로</button>
+    </div>
+  </div>
+</div>
 <div class="modal-bg" id="modal" hidden><div class="modal" id="modalBody" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" hidden></div>
 
@@ -1371,6 +1409,14 @@ function startSolo(game, seed) {
   }];
   show('viewGame');
   try { history.replaceState(null, '', `#${G.hash}-${seed}`); } catch (e) { /* 무시 */ }
+  // 이 문제의 1위 기록을 불러와 목표로 보여준다
+  const mySolo = solo;
+  recordGet(game, seed).then((r) => {
+    if (solo !== mySolo || !r) return;
+    const chip = document.createElement('span'); chip.className = 'chip'; chip.id = 'recChip';
+    chip.textContent = `1위 ${r.n} ${fmt(r.t)}`;
+    $('pzMeta').appendChild(chip);
+  }).catch(() => {});
 }
 function soloBuzz() {
   openSheet(Date.now() + ANSWER_MS, (code) => {
@@ -1399,15 +1445,31 @@ function soloFinish(code) {
     (SHARE_URL ? `\n같은 문제 도전 👉 ${SHARE_URL}#${G.hash}-${solo.seed}` : `\n문제 번호 ${solo.seed}로 같은 문제에 도전할 수 있어요`);
   const nextLv = p.isOriginal ? G.defaultLevel : p.level;
   const nextName = (G.levels.find((l) => l.v === nextLv) || {}).name || '';
+  const name = myName();
+  const recPr = recordSubmit(game, solo.seed, ms, name).catch(() => null);
+  // 화면에 보이는 초 단위로 비교해야 숫자가 맞아 보인다
+  const sec = (x) => Math.ceil(x / 1000);
+  const gap = (a, b) => fmt(Math.abs(sec(a) - sec(b)) * 1000);
+  const diff = (a, b) => (sec(a) < sec(b) ? `${gap(a, b)} 빨라요` : sec(a) > sec(b) ? `${gap(a, b)} 느려요` : '거의 같아요');
+  const myRow = best == null ? `<div class="rec-row"><span>내 최고기록</span><span><span class="tag">첫 기록!</span></span></div>`
+    : isBest ? `<div class="rec-row"><span>내 최고기록 <span class="sub">이전 ${fmt(best)}</span></span><span><span class="tag">새 기록!${sec(best) > sec(ms) ? ` ${gap(ms, best)} 단축` : ''}</span></span></div>`
+    : `<div class="rec-row"><span>내 최고기록 <b>${fmt(best)}</b></span><span class="sub">${diff(ms, best)}</span></div>`;
   setTimeout(() => modal(`<h2>${game === 'code' ? `정답! ${esc(code)}` : '울타리 완성!'}</h2>
     <div class="result-big">${fmt(ms)}</div>
-    <p class="note" style="text-align:center">${solo.wrong ? `오답 ${solo.wrong}번 (+${solo.wrong * 30}초) 포함` : game === 'code' ? '오답 없이 맞혔어요' : label}${isBest ? ' · 이 문제 최고 기록' : ''}</p>
+    <p class="note" style="text-align:center">${solo.wrong ? `오답 ${solo.wrong}번 (+${solo.wrong * 30}초) 포함` : game === 'code' ? '오답 없이 맞혔어요' : label}</p>
+    <div class="rec-table">${myRow}<div class="rec-row" id="mWorld"><span>이 문제 1위</span><span class="sub">불러오는 중…</span></div></div>${name === '플레이어' ? '<p class="note" style="margin:0">기록 이름은 첫 화면의 이름 칸에서 정할 수 있어요.</p>' : ''}
     <div class="row" style="justify-content:center">
       <button class="btn" id="mShare" type="button">결과 복사</button>
       <button class="btn primary" id="mNext" type="button">${nextName} 새 문제</button>
       <button class="btn ghost" data-close type="button">판 보기</button>
     </div>`, (el) => {
     el.querySelector('#mShare').onclick = () => copy(share);
+    recPr.then((r) => {
+      const w = el.querySelector('#mWorld'); if (!w) return;
+      if (!r) { w.innerHTML = '<span>이 문제 1위</span><span class="sub">기록을 불러오지 못했어요</span>'; return; }
+      if (r.isNew) w.innerHTML = `<span>이 문제 1위 <b>${esc(name)}</b>${r.prev ? ` <span class="sub">이전 ${esc(r.prev.n)} ${fmt(r.prev.t)}</span>` : ''}</span><span class="tag">🏆 ${r.prev ? '새 1위!' : '첫 1위!'}</span>`;
+      else w.innerHTML = `<span>이 문제 1위 <b>${esc(r.prev.n)} ${fmt(r.prev.t)}</b></span><span class="sub">${diff(ms, r.prev.t)}</span>`;
+    });
     el.querySelector('#mNext').onclick = () => { closeModal(); startSolo(game, G.makeSeed(nextLv)); };
   }), game === 'fence' ? 500 : 0);
 }
@@ -1507,6 +1569,29 @@ async function firebaseDb() {
   return fbDb;
 }
 const fbNow = () => Date.now() + fbOffset;
+
+// ---------- 문제별 최고기록 (records/{게임}-{문제번호}: { t: 걸린 시간(ms), n: 이름, at }) ----------
+const recKey = (game, seed) => `${GAMES[game].hash}-${seed}`;
+function withTimeout(pr, ms) { return Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]); }
+async function recordGet(game, seed) {
+  if (!FIREBASE_CONFIG) return null;
+  const db = await withTimeout(firebaseDb(), 8000);
+  const snap = await withTimeout(db.ref('records/' + recKey(game, seed)).get(), 8000);
+  const v = snap.val();
+  return v && typeof v.t === 'number' ? v : null;
+}
+// 더 빠를 때만 바꾼다. 결과: { prev: 이전 1위, isNew: 내가 새 1위인지 }
+async function recordSubmit(game, seed, ms, name) {
+  if (!FIREBASE_CONFIG) return null;
+  const db = await withTimeout(firebaseDb(), 8000);
+  let prev = null;
+  const res = await withTimeout(db.ref('records/' + recKey(game, seed)).transaction((cur) => {
+    prev = cur && typeof cur.t === 'number' ? cur : null;
+    if (prev && prev.t <= ms) return undefined; // 기존 기록이 더 좋음 → 그대로
+    return { t: ms, n: name, at: Date.now() };
+  }), 10000);
+  return { prev, isNew: !!res.committed, rec: res.snapshot.val() };
+}
 const clean = (o) => JSON.parse(JSON.stringify(o)); // undefined 제거 (Firebase는 undefined를 못 씀)
 
 async function openFirebaseTransport(code, isHost, onMsg, onLeft, meta) {
@@ -1559,6 +1644,7 @@ function netError(text) { $('netErr').textContent = text; $('roomsErr').textCont
 function leaveNet() {
   if (net) { try { if (!net.isHost) net.send({ t: 'leave', cid: myCid }); } catch (e) { /* 무시 */ } net.close(); }
   net = null; host = null; lastState = null; lastSeed = null; clearInterval(hostLoop); clearInterval(resendT);
+  if ($('cmp')) hideCompare();
 }
 function myName() {
   const n = ($('nameInput').value || '').trim().slice(0, 10) || '플레이어';
@@ -1573,6 +1659,7 @@ function hostState() {
     phase: host.phase, game: host.game, target: host.target, level: host.level, round: host.round, seed: host.seed, hostCid: myCid,
     players: host.players.map((p) => ({ cid: p.cid, name: p.name, score: p.score })),
     locked: host.locked, event: host.event, reveal: host.reveal,
+    boards: host.phase === 'reveal' && host.game === 'fence' ? Object.entries(host.boards || {}).map(([cid, e]) => ({ cid, e: e || '-' })) : null,
     buzz: host.buzz ? { cid: host.buzz.cid, remain: host.buzz.end - now } : null,
     roundRemain: host.roundEnd ? host.roundEnd - now : null,
     cdRemain: host.cdEnd ? host.cdEnd - now : null,
@@ -1601,6 +1688,12 @@ function hostOnMsg(m) {
     hostPush();
   } else if (m.t === 'leave') {
     hostRemove(m.cid);
+  } else if (m.t === 'board') {
+    // 라운드가 끝났을 때 각자 그린 울타리 (결과 비교용)
+    if (host.game !== 'fence' || host.phase !== 'reveal' || !host.players.some((p) => p.cid === m.cid)) return;
+    if (host.reveal && host.reveal.winner === m.cid && host.boards[m.cid]) return;
+    host.boards[m.cid] = String(m.edges || '').split(',').filter((x) => /^\d+$/.test(x)).slice(0, 2000).join(',');
+    hostPush();
   } else if (m.t === 'buzz') {
     if (host.game !== 'code' || host.phase !== 'play' || host.buzz || host.locked.includes(m.cid) || !host.players.find((p) => p.cid === m.cid)) return;
     host.buzz = { cid: m.cid, end: Date.now() + ANSWER_MS };
@@ -1614,7 +1707,8 @@ function hostOnMsg(m) {
     const p = host.players.find((x) => x.cid === m.cid); if (!p) return;
     if (!FENCE.check(hostPuzzle(), m.edges.map(Number))) return;
     p.score++;
-    host.phase = 'reveal'; host.reveal = { winner: m.cid }; host.revealEnd = Date.now() + 5000; host.roundEnd = null;
+    host.phase = 'reveal'; host.reveal = { winner: m.cid }; host.revealEnd = revealUntil(); host.roundEnd = null;
+    host.boards[m.cid] = m.edges.map(Number).join(',');
     hostEvent('good', `${p.name} 울타리 완성!`);
     hostPush();
   }
@@ -1652,6 +1746,7 @@ function hostNextRound() {
   const G = GAMES[host.game];
   host.curLevel = host.level || G.levels[Math.floor(Math.random() * G.levels.length)].v;
   host.seed = G.makeSeed(host.curLevel);
+  host.boards = {};
   host.locked = []; host.buzz = null; host.reveal = null;
   host.phase = 'countdown'; host.cdEnd = Date.now() + 3000; host.roundEnd = null;
   hostPush();
@@ -1665,13 +1760,17 @@ function hostTick() {
     if (host.buzz && now >= host.buzz.end) hostJudge(host.buzz.cid, '');
     else if (!host.buzz && now >= host.roundEnd) {
       const p = hostPuzzle();
-      host.phase = 'reveal'; host.reveal = { answer: p.answer, winner: null }; host.revealEnd = now + 5000; host.roundEnd = null;
+      host.phase = 'reveal'; host.reveal = { answer: p.answer, winner: null }; host.revealEnd = revealUntil(); host.roundEnd = null;
       hostEvent('info', '시간 종료'); hostPush();
     }
-  } else if (host.phase === 'reveal' && now >= host.revealEnd) {
-    if (host.players.some((p) => p.score >= host.target)) { host.phase = 'over'; hostPush(); }
-    else hostNextRound();
-  }
+  } else if (host.phase === 'reveal' && now >= host.revealEnd) hostAfterReveal();
+}
+// 울타리 치기는 결과 비교 화면에서 방장이 '다음으로'를 눌러야 넘어간다
+function revealUntil() { return host.game === 'fence' ? Infinity : Date.now() + 5000; }
+function hostAfterReveal() {
+  if (!host || host.phase !== 'reveal') return;
+  if (host.players.some((p) => p.score >= host.target)) { host.phase = 'over'; hostPush(); }
+  else hostNextRound();
 }
 
 async function createRoom(opts) {
@@ -1867,8 +1966,11 @@ function onState(s) {
     else if (fence) {
       fence.frozen = true; $('board').classList.add('lit');
       if (s.reveal.winner !== myCid) drawFence(fence.p.solution);
+      // 내가 그린 울타리를 방장에게 보내 결과 비교 화면에 올린다
+      if (s.reveal.winner !== myCid) sendOrHandle({ t: 'board', cid: myCid, edges: [...fence.on].join(',') });
     }
   }
+  if (s.game === 'fence' && s.phase === 'reveal') showCompare(s); else hideCompare();
   if (s.game === 'code') {
     if (s.buzz && s.buzz.cid === myCid && !sheet) openSheet(Date.now() + s.buzz.remain, (code) => sendOrHandle({ t: 'answer', cid: myCid, code }));
     if ((!s.buzz || s.buzz.cid !== myCid) && sheet) closeSheet();
@@ -1881,7 +1983,7 @@ function renderScores(s) {
     `<span class="score${p.cid === myCid ? ' me' : ''}${s.locked.includes(p.cid) ? ' locked' : ''}">${esc(p.name)}${p.cid === myCid ? ' (나)' : ''} <b>${p.score}</b></span>`).join('');
 }
 function renderLobby(s) {
-  closeModal(); closeSheet(); $('countdown').hidden = true; lastSeed = null;
+  closeModal(); closeSheet(); hideCompare(); $('countdown').hidden = true; lastSeed = null;
   show('viewLobby');
   $('lobbyCode').textContent = net.code;
   $('lobbyTitle').textContent = net.roomName ? `${net.locked ? '🔒 ' : ''}${net.roomName}` : '방 코드';
@@ -1930,6 +2032,59 @@ function showOver(s) {
     el.querySelector('#mOut').onclick = () => { el.dataset.kind = ''; closeModal(); leaveNet(); show('viewHome'); };
   });
 }
+
+// ---------- 울타리 치기 결과 비교 (라운드 끝) ----------
+function miniFence(p, edges, kind) {
+  const g = FENCE.geo(p.R, p.C), on = new Set(edges);
+  const X = (c) => PAD + c * U, Y = (r) => PAD + r * U;
+  const parts = [`<rect x="0" y="0" width="${p.C * U + PAD * 2}" height="${p.R * U + PAD * 2}" rx="18" class="f-bg"/>`];
+  for (const e of on) {
+    if (e < 0 || e >= g.E) continue;
+    let x1, y1, x2, y2;
+    if (e < g.H) { const r = Math.floor(e / p.C), c = e % p.C; x1 = X(c); y1 = Y(r); x2 = X(c + 1); y2 = y1; }
+    else { const k = e - g.H, r = Math.floor(k / (p.C + 1)), c = k % (p.C + 1); x1 = X(c); y1 = Y(r); x2 = x1; y2 = Y(r + 1); }
+    parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="f-line${kind ? ' ' + kind : ''}"/>`);
+  }
+  p.clues.forEach((row, r) => row.forEach((k, c) => {
+    if (k == null) return;
+    const n = g.cellEdges[r * p.C + c].filter((e) => on.has(e)).length;
+    parts.push(`<text x="${X(c) + U / 2}" y="${Y(r) + U / 2}" class="f-num${n === k ? ' done' : n > k ? ' over' : ''}">${k}</text>`);
+  }));
+  for (let r = 0; r <= p.R; r++) for (let c = 0; c <= p.C; c++) parts.push(`<circle cx="${X(c)}" cy="${Y(r)}" r="9" class="f-dot"/>`);
+  return `<svg viewBox="0 0 ${p.C * U + PAD * 2} ${p.R * U + PAD * 2}" class="mini-fence" aria-hidden="true">${parts.join('')}</svg>`;
+}
+function showCompare(s) {
+  if (!fence) return;
+  const p = fence.p, sol = new Set(p.solution);
+  const boards = {};
+  (Array.isArray(s.boards) ? s.boards : Object.values(s.boards || {})).forEach((b) => { if (b && b.cid) boards[b.cid] = b.e && b.e !== '-' ? b.e.split(',').map(Number) : []; });
+  const winner = s.reveal && s.players.find((x) => x.cid === s.reveal.winner);
+  const cards = s.players.map((pl) => {
+    const e = boards[pl.cid];
+    const isWin = winner && pl.cid === winner.cid;
+    let sub;
+    if (!e) sub = '불러오는 중…';
+    else if (isWin) sub = '완성!';
+    else {
+      const right = e.filter((x) => sol.has(x)).length, wrong = e.length - right;
+      sub = `맞은 선 ${right}/${sol.size}${wrong ? ` · 틀린 선 ${wrong}` : ''}`;
+    }
+    return `<figure class="cmp-card${isWin ? ' win' : ''}${pl.cid === myCid ? ' me' : ''}">
+      ${e ? miniFence(p, e, isWin ? 'sol' : '') : '<div class="mini-wait"></div>'}
+      <figcaption><b>${isWin ? '🏆 ' : ''}${esc(pl.name)}${pl.cid === myCid ? ' (나)' : ''}</b><span>${sub}</span></figcaption></figure>`;
+  });
+  if (!winner) cards.push(`<figure class="cmp-card answer">${miniFence(p, p.solution, 'sol')}<figcaption><b>정답</b><span>선 ${sol.size}개</span></figcaption></figure>`);
+  const isHost = net && net.isHost;
+  $('cmpTitle').textContent = `라운드 ${s.round} 결과 · ${winner ? winner.name + ' 완성!' : '시간 종료'}`;
+  $('cmpGrid').innerHTML = cards.join('');
+  $('cmpScores').textContent = s.players.map((x) => `${x.name} ${x.score}점`).join(' · ');
+  $('btnCmpNext').hidden = !isHost;
+  $('cmpWait').hidden = !!isHost;
+  $('cmp').hidden = false;
+}
+function hideCompare() { $('cmp').hidden = true; $('cmp').classList.remove('peek'); $('btnCmpHide').textContent = '게임판 보기'; }
+$('btnCmpNext').addEventListener('click', () => { if (host) hostAfterReveal(); });
+$('btnCmpHide').addEventListener('click', () => { $('cmp').classList.toggle('peek'); $('btnCmpHide').textContent = $('cmp').classList.contains('peek') ? '결과 보기' : '게임판 보기'; });
 
 // 대결 화면 타이머/버저 표시
 function netTicker() {
