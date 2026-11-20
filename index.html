@@ -272,6 +272,9 @@ body.answering .board { box-shadow: inset 0 0 0 2px var(--copper), 0 12px 30px r
 .rec-row b { font-variant-numeric: tabular-nums; }
 .rec-row .tag { font-size: 12px; color: var(--glow); font-weight: 700; }
 .rec-row .sub { color: var(--muted); font-size: 12px; }
+.rec-name { display: flex; gap: 6px; justify-content: center; }
+.rec-name input { flex: 1 1 auto; min-width: 0; }
+.rec-name .btn { flex: none; }
 .result-big { font-family: var(--font-display); font-size: 36px; text-align: center; color: var(--glow); font-weight: 700; font-variant-numeric: tabular-nums; }
 .toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 60; background: var(--ink); color: #111; padding: 9px 16px; border-radius: 999px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.4); max-width: calc(100% - 24px); text-align: center; }
 .toast.bad { background: var(--danger); color: #fff; }
@@ -1457,7 +1460,7 @@ function soloFinish(code) {
   setTimeout(() => modal(`<h2>${game === 'code' ? `정답! ${esc(code)}` : '울타리 완성!'}</h2>
     <div class="result-big">${fmt(ms)}</div>
     <p class="note" style="text-align:center">${solo.wrong ? `오답 ${solo.wrong}번 (+${solo.wrong * 30}초) 포함` : game === 'code' ? '오답 없이 맞혔어요' : label}</p>
-    <div class="rec-table">${myRow}<div class="rec-row" id="mWorld"><span>이 문제 1위</span><span class="sub">불러오는 중…</span></div></div>${name === '플레이어' ? '<p class="note" style="margin:0">기록 이름은 첫 화면의 이름 칸에서 정할 수 있어요.</p>' : ''}
+    <div class="rec-table">${myRow}<div class="rec-row" id="mWorld"><span>이 문제 1위</span><span class="sub">불러오는 중…</span></div></div>${name === '플레이어' ? '<p class="note" id="mNameHint" style="margin:0">기록 이름은 첫 화면의 이름 칸에서 정할 수 있어요.</p>' : ''}
     <div class="row" style="justify-content:center">
       <button class="btn" id="mShare" type="button">결과 복사</button>
       <button class="btn primary" id="mNext" type="button">${nextName} 새 문제</button>
@@ -1467,8 +1470,32 @@ function soloFinish(code) {
     recPr.then((r) => {
       const w = el.querySelector('#mWorld'); if (!w) return;
       if (!r) { w.innerHTML = '<span>이 문제 1위</span><span class="sub">기록을 불러오지 못했어요</span>'; return; }
-      if (r.isNew) w.innerHTML = `<span>이 문제 1위 <b>${esc(name)}</b>${r.prev ? ` <span class="sub">이전 ${esc(r.prev.n)} ${fmt(r.prev.t)}</span>` : ''}</span><span class="tag">🏆 ${r.prev ? '새 1위!' : '첫 1위!'}</span>`;
-      else w.innerHTML = `<span>이 문제 1위 <b>${esc(r.prev.n)} ${fmt(r.prev.t)}</b></span><span class="sub">${diff(ms, r.prev.t)}</span>`;
+      if (r.isNew) {
+        const draw = (nm) => { w.innerHTML = `<span>이 문제 1위 <b>${esc(nm)}</b>${r.prev ? ` <span class="sub">이전 ${esc(r.prev.n)} ${fmt(r.prev.t)}</span>` : ''}</span><span class="tag">🏆 ${r.prev ? '새 1위!' : '첫 1위!'}</span>`; };
+        draw(name);
+        const box = document.createElement('div'); box.className = 'rec-name';
+        box.innerHTML = `<button class="btn" type="button" id="mNameBtn">✏️ 이름으로 기록하기</button>`;
+        w.after(box); el.querySelector('#mNameHint')?.remove();
+        box.querySelector('#mNameBtn').onclick = () => {
+          box.innerHTML = `<input id="mNameIn" maxlength="10" placeholder="기록에 남길 이름" value="${name === '플레이어' ? '' : esc(name)}"><button class="btn primary" type="button" id="mNameOk">기록</button>`;
+          const inp = box.querySelector('#mNameIn'), ok = box.querySelector('#mNameOk');
+          inp.focus();
+          const save = async () => {
+            const nm = (inp.value || '').trim().slice(0, 10);
+            if (!nm) { inp.focus(); return; }
+            ok.disabled = true; inp.disabled = true;
+            const res = await recordRename(game, solo.seed, r.rec, nm).catch(() => 'err');
+            if (res === 'ok') {
+              draw(nm); $('nameInput').value = nm; store.set('name', nm);
+              box.innerHTML = `<p class="note" style="margin:0;text-align:center">‘${esc(nm)}’ 이름으로 기록했어요</p>`;
+            } else if (res === 'gone') {
+              box.innerHTML = `<p class="note" style="margin:0;text-align:center">그새 더 빠른 기록이 나와서 바꿀 수 없어요</p>`;
+            } else { ok.disabled = false; inp.disabled = false; ok.textContent = '다시 시도'; }
+          };
+          ok.onclick = save;
+          inp.onkeydown = (e) => { if (e.key === 'Enter') save(); };
+        };
+      } else w.innerHTML = `<span>이 문제 1위 <b>${esc(r.prev.n)} ${fmt(r.prev.t)}</b></span><span class="sub">${diff(ms, r.prev.t)}</span>`;
     });
     el.querySelector('#mNext').onclick = () => { closeModal(); startSolo(game, G.makeSeed(nextLv)); };
   }), game === 'fence' ? 500 : 0);
@@ -1591,6 +1618,18 @@ async function recordSubmit(game, seed, ms, name) {
     return { t: ms, n: name, at: Date.now() };
   }), 10000);
   return { prev, isNew: !!res.committed, rec: res.snapshot.val() };
+}
+// 방금 세운 내 1위 기록의 이름만 바꾼다 (그사이 다른 사람이 깼으면 'gone')
+async function recordRename(game, seed, rec, name) {
+  if (!FIREBASE_CONFIG || !rec) return 'err';
+  const db = await withTimeout(firebaseDb(), 8000);
+  let gone = false;
+  const res = await withTimeout(db.ref('records/' + recKey(game, seed)).transaction((cur) => {
+    if (!cur || cur.t !== rec.t || cur.at !== rec.at) { gone = !!cur; return cur ? undefined : cur; }
+    return { t: cur.t, n: name, at: cur.at };
+  }), 10000);
+  if (res.committed && res.snapshot.val() && res.snapshot.val().n === name) return 'ok';
+  return gone ? 'gone' : 'err';
 }
 const clean = (o) => JSON.parse(JSON.stringify(o)); // undefined 제거 (Firebase는 undefined를 못 씀)
 
