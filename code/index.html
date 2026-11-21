@@ -172,6 +172,21 @@ body.playing .brand h1 { font-size: 19px; }
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--stone); border-radius: 10px; padding: 4px; }
 .segb { border: 0; background: transparent; border-radius: 8px; padding: 9px; font-weight: 600; color: var(--muted); }
 .segb[aria-checked="true"] { background: var(--slab-2); color: var(--copper); box-shadow: inset 0 0 0 1px #44524f; }
+.setup { display: grid; gap: 12px; }
+.set-block { display: grid; gap: 6px; }
+.set-head { display: flex; justify-content: space-between; align-items: center; }
+.set-title { font-size: 13px; color: var(--muted); font-weight: 600; }
+.pick-all { border: 0; background: none; color: var(--copper); font-size: 13px; font-weight: 600; padding: 4px 2px; }
+.picks { display: flex; flex-wrap: wrap; gap: 6px; }
+.pick { border: 1px solid #44524f; background: var(--stone); color: var(--muted); border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 14px; }
+.pick[aria-pressed="true"] { background: rgba(217,138,78,.16); border-color: var(--copper); color: var(--copper); }
+.pick[aria-pressed="true"]::before { content: '✓ '; }
+.target-row { gap: 8px; font-size: 15px; }
+.num-in { width: 72px; text-align: center; font-weight: 700; font-size: 17px; flex: none !important; }
+.over-sub { text-align: center; color: var(--muted); margin: -4px 0 0; font-size: 14px; }
+.hist { display: grid; gap: 4px; max-height: 180px; overflow: auto; font-size: 13px; }
+.hist-row { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; background: var(--stone); border-radius: 8px; }
+.hist-row .sub { color: var(--muted); }
 .modal input, .modal select { width: 100%; }
 
 /* 게임 탭 */
@@ -294,7 +309,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     </div>
     <div class="top-actions">
       <button class="btn ghost sm" id="btnRules" type="button">규칙</button>
-      <button class="btn ghost sm" id="btnToLobby" type="button" hidden title="대기실로 돌아가 게임이나 판 크기를 바꿔요">게임 바꾸기</button>
+      <button class="btn ghost sm" id="btnToLobby" type="button" hidden title="대기실로 돌아가 게임·난이도·승리 조건을 바꿔요">설정 바꾸기</button>
       <button class="btn ghost sm" id="btnHome" type="button" hidden>처음으로</button>
     </div>
   </header>
@@ -353,25 +368,20 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     <div class="panel">
       <h2>참가자</h2>
       <div class="players" id="lobbyPlayers"></div>
-      <div id="hostControls" style="display:grid;gap:10px">
-        <div class="row">
-          <label for="gameSel" class="note">게임</label>
-          <select id="gameSel">
-            <option value="code">비밀 코드</option>
-            <option value="fence">울타리 치기</option>
-          </select>
+      <div id="hostControls" class="setup">
+        <div class="set-block" id="gameBlock">
+          <div class="set-head"><span class="set-title">게임</span><button class="pick-all" id="gamesAll" type="button">전체 선택</button></div>
+          <div class="picks" id="gamePicks"></div>
         </div>
-        <div class="row">
-          <label for="levelSel" class="note" id="levelLabel">난이도</label>
-          <select id="levelSel"></select>
-          <label for="targetSel" class="note">먼저</label>
-          <select id="targetSel">
-            <option value="1">1점</option>
-            <option value="2" selected>2점</option>
-            <option value="3">3점</option>
-          </select>
-          <span class="note">얻으면 승리</span>
+        <div class="set-block">
+          <div class="set-head"><span class="set-title">난이도</span><button class="pick-all" id="levelsAll" type="button">전체 선택</button></div>
+          <div class="picks" id="levelPicks"></div>
         </div>
+        <div class="set-block">
+          <div class="set-head"><label class="set-title" for="targetIn">승리 조건</label></div>
+          <div class="row target-row"><span>먼저</span><input id="targetIn" class="num-in" type="number" inputmode="numeric" min="1" max="20" value="3"><span>승 하면 승리</span></div>
+        </div>
+        <p class="note" id="setupSummary" style="margin:0"></p>
         <button class="btn primary" id="btnStart" type="button">시작</button>
       </div>
       <p class="note" id="lobbyWait" hidden>방장이 시작하기를 기다리고 있어요.</p>
@@ -742,7 +752,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   // 맵 크기별 (7×7 ~ 15×15). keep = 남길 숫자 비율 하한 (0 = 유일해가 유지되는 한 최대한 지움)
   const SIZES = [7, 8, 9, 10, 11, 12, 13, 14, 15];
   const LEVELS = {};
-  for (const n of SIZES) LEVELS[n] = { name: n + '×' + n, R: n, C: n, keep: 0 };
+  // 난이도 3단계: 쉬움 7~9, 보통 10~12, 어려움 13~15 (문제 번호는 판 크기×1,000,000 + n 그대로)
+  const TIERS = { 1: [7, 8, 9], 2: [10, 11, 12], 3: [13, 14, 15] };
+  const tierOf = (n) => (n <= 9 ? 1 : n <= 12 ? 2 : 3);
+  const TIER_NAMES = { 1: '쉬움', 2: '보통', 3: '어려움' };
+  for (const n of SIZES) LEVELS[n] = { name: TIER_NAMES[tierOf(n)] + ' ' + n + '×' + n, R: n, C: n, keep: 0 };
 
   function rng(seed) {
     let a = seed >>> 0;
@@ -1003,7 +1017,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     if (!cache.has(seed)) cache.set(seed, seed === 0 ? original() : generate(seed));
     return cache.get(seed);
   }
-  const api = { LEVELS, SIZES, geo, puzzle, check, countSolutions, original, generate };
+  const api = { LEVELS, SIZES, TIERS, tierOf, geo, puzzle, check, countSolutions, original, generate };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FENCE = api;
 })(this);
@@ -1040,6 +1054,8 @@ const GAMES = {
       { v: 3, name: '어려움', sub: '조건 5~6개', stars: '★★★' },
     ],
     levelLabel: '난이도', defaultLevel: 2,
+    tierOf: (p) => p.level,
+    validSeed: (v) => [1, 2, 3].includes(Math.floor(v / 1e6)),
     roundMs: () => 300000,
     blurb: '26장의 카드 중 조건을 모두 만족하는 4장을 찾아 버저를 누르세요.',
     rules: [
@@ -1051,11 +1067,19 @@ const GAMES = {
   },
   fence: {
     id: 'fence', name: '울타리 치기', hash: 'f',
-    puzzle: (s) => FENCE.puzzle(s), makeSeed: (lv) => lv * 1e6 + 1 + Math.floor(Math.random() * 999998),
-    levels: FENCE.SIZES.map((n) => ({ v: n, name: `${n}×${n}`, sub: n <= 9 ? '가볍게' : n <= 12 ? '집중' : '긴 승부' })),
-    levelLabel: '판 크기', defaultLevel: 9,
+    puzzle: (s) => FENCE.puzzle(s),
+    // 난이도 안에서 판 크기를 하나 고른다 (문제 번호 = 판 크기 × 1,000,000 + n)
+    makeSeed: (lv) => { const t = FENCE.TIERS[lv] || FENCE.TIERS[2]; return t[Math.floor(Math.random() * t.length)] * 1e6 + 1 + Math.floor(Math.random() * 999998); },
+    levels: [
+      { v: 1, name: '쉬움', sub: '7×7 ~ 9×9', stars: '★' },
+      { v: 2, name: '보통', sub: '10×10 ~ 12×12', stars: '★★' },
+      { v: 3, name: '어려움', sub: '13×13 ~ 15×15', stars: '★★★' },
+    ],
+    levelLabel: '난이도', defaultLevel: 1,
+    tierOf: (p) => (p.isOriginal ? 1 : FENCE.tierOf(p.R)),
+    validSeed: (v) => !!FENCE.LEVELS[Math.floor(v / 1e6)],
     // 큰 판일수록 시간을 넉넉히 (최소 10분, 15×15는 15분)
-    roundMs: (lv) => Math.max(600000, (lv || 9) * (lv || 9) * 4000),
+    roundMs: (p) => Math.max(600000, (p && p.R || 9) * (p && p.R || 9) * 4000),
     blurb: '숫자를 참고해 점과 점을 이어 하나의 닫힌 울타리를 완성하세요.',
     rules: [
       '게임판의 숫자를 참고하여 점과 점을 이어 하나의 선으로 울타리를 완성해요.',
@@ -1446,7 +1470,7 @@ function soloFinish(code) {
   const label = puzzleLabel(game, p);
   const share = `🔐 ${label}를 ${fmt(ms)} 만에 풀었어요${solo.wrong ? ` (오답 ${solo.wrong}번)` : ''}!` +
     (SHARE_URL ? `\n같은 문제 도전 👉 ${SHARE_URL}#${G.hash}-${solo.seed}` : `\n문제 번호 ${solo.seed}로 같은 문제에 도전할 수 있어요`);
-  const nextLv = p.isOriginal ? G.defaultLevel : p.level;
+  const nextLv = p.isOriginal ? G.defaultLevel : G.tierOf(p);
   const nextName = (G.levels.find((l) => l.v === nextLv) || {}).name || '';
   const name = myName();
   const recPr = recordSubmit(game, solo.seed, ms, name).catch(() => null);
@@ -1695,7 +1719,8 @@ let host = null, hostLoop = null, resendT = null;
 function hostState() {
   const now = Date.now();
   return {
-    phase: host.phase, game: host.game, target: host.target, level: host.level, round: host.round, seed: host.seed, hostCid: myCid,
+    phase: host.phase, game: host.game, games: host.games, levels: host.levels, target: host.target, level: host.curLevel || 0, round: host.round, seed: host.seed, hostCid: myCid,
+    history: host.phase === 'over' ? host.history : null,
     players: host.players.map((p) => ({ cid: p.cid, name: p.name, score: p.score })),
     locked: host.locked, event: host.event, reveal: host.reveal,
     boards: host.phase === 'reveal' && host.game === 'fence' ? Object.entries(host.boards || {}).map(([cid, e]) => ({ cid, e: e || '-' })) : null,
@@ -1709,7 +1734,7 @@ function hostPush() {
   const s = hostState();
   if (net) {
     net.send({ t: 'state', s });
-    if (net.updateLobby) net.updateLobby({ players: host.players.length, phase: host.phase === 'lobby' ? 'lobby' : 'playing', game: host.game });
+    if (net.updateLobby) net.updateLobby({ players: host.players.length, phase: host.phase === 'lobby' ? 'lobby' : 'playing', game: host.games[0] || host.game, games: host.games });
   }
   onState(s);
 }
@@ -1745,7 +1770,7 @@ function hostOnMsg(m) {
     if (host.game !== 'fence' || host.phase !== 'play' || !Array.isArray(m.edges)) return;
     const p = host.players.find((x) => x.cid === m.cid); if (!p) return;
     if (!FENCE.check(hostPuzzle(), m.edges.map(Number))) return;
-    p.score++;
+    p.score++; hostRecord(p);
     host.phase = 'reveal'; host.reveal = { winner: m.cid }; host.revealEnd = revealUntil(); host.roundEnd = null;
     host.boards[m.cid] = m.edges.map(Number).join(',');
     hostEvent('good', `${p.name} 울타리 완성!`);
@@ -1767,7 +1792,7 @@ function hostJudge(cid, code) {
   host.buzz = null;
   const answer = hostPuzzle().answer;
   if (code === answer) {
-    p.score++;
+    p.score++; hostRecord(p);
     host.phase = 'reveal'; host.reveal = { answer, winner: cid }; host.revealEnd = Date.now() + 5000; host.roundEnd = null;
     hostEvent('good', `${p.name} 정답! ${code}`);
   } else {
@@ -1780,10 +1805,17 @@ function hostJudge(cid, code) {
   }
   hostPush();
 }
+// 라운드 결과 기록 (대결이 끝나면 승수와 함께 보여주고 공유)
+function hostRecord(p) {
+  host.history.push({ r: host.round, g: host.game, lv: GAMES[host.game].tierOf(hostPuzzle()), w: p ? p.name : '' });
+}
+const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
 function hostNextRound() {
   host.round++;
+  // 고른 게임·난이도 중에서 라운드마다 하나씩 뽑는다
+  host.game = pickOne(host.games);
   const G = GAMES[host.game];
-  host.curLevel = host.level || G.levels[Math.floor(Math.random() * G.levels.length)].v;
+  host.curLevel = pickOne(host.levels);
   host.seed = G.makeSeed(host.curLevel);
   host.boards = {};
   host.locked = []; host.buzz = null; host.reveal = null;
@@ -1794,11 +1826,11 @@ function hostTick() {
   if (!host) return;
   const now = Date.now();
   if (host.phase === 'countdown' && now >= host.cdEnd) {
-    host.phase = 'play'; host.cdEnd = null; host.roundEnd = now + GAMES[host.game].roundMs(host.curLevel); hostPush();
+    host.phase = 'play'; host.cdEnd = null; host.roundEnd = now + GAMES[host.game].roundMs(hostPuzzle()); hostPush();
   } else if (host.phase === 'play') {
     if (host.buzz && now >= host.buzz.end) hostJudge(host.buzz.cid, '');
     else if (!host.buzz && now >= host.roundEnd) {
-      const p = hostPuzzle();
+      const p = hostPuzzle(); hostRecord(null);
       host.phase = 'reveal'; host.reveal = { answer: p.answer, winner: null }; host.revealEnd = revealUntil(); host.roundEnd = null;
       hostEvent('info', '시간 종료'); hostPush();
     }
@@ -1815,19 +1847,19 @@ function hostAfterReveal() {
 async function createRoom(opts) {
   $('netErr').textContent = '';
   const name = myName();
-  const game = opts.game || homeGame;
+  const games = PICKABLE.slice(), game = games[0];
   try {
     let code, tr, tries = 0;
     for (;;) {
       code = newCode();
-      const meta = { name: opts.roomName, game, host: name, locked: !!opts.pw, pwHash: opts.pw ? await sha(code + ':' + opts.pw) : null, players: 1, phase: 'lobby' };
+      const meta = { v: 2, name: opts.roomName, game, games, host: name, locked: !!opts.pw, pwHash: opts.pw ? await sha(code + ':' + opts.pw) : null, players: 1, phase: 'lobby' };
       try { tr = await openTransport(code, true, (m) => hostOnMsg(m), (cid) => hostRemove(cid), meta); break; }
       catch (e) { if (++tries >= 3 || (e && e.message === 'room-unavailable')) throw e; }
     }
     solo = null; tickers = [netTicker]; stopRoomList();
     net = { isHost: true, code, roomName: opts.roomName, locked: !!opts.pw, send: tr.send, close: tr.close, updateLobby: tr.updateLobby };
-    host = { phase: 'lobby', game, target: 2, level: opts.level != null && !Number.isNaN(opts.level) ? opts.level : GAMES[game].defaultLevel, round: 0, seed: 0, players: [{ cid: myCid, name, score: 0 }], locked: [], buzz: null, reveal: null, event: null, roundEnd: null, cdEnd: null };
-    $('gameSel').value = game; fillLevelSel(game, host.level); $('targetSel').value = '2';
+    host = { phase: 'lobby', game, games, levels: [2], target: 3, curLevel: 0, history: [], round: 0, seed: 0, players: [{ cid: myCid, name, score: 0 }], locked: [], buzz: null, reveal: null, event: null, roundEnd: null, cdEnd: null };
+    renderSetup();
     clearInterval(hostLoop); hostLoop = setInterval(hostTick, 200);
     clearInterval(resendT);
     if (!FIREBASE_CONFIG || hasClaudeRoom()) resendT = setInterval(() => { if (host && net) net.send({ t: 'state', s: hostState() }); }, 2500);
@@ -1903,27 +1935,13 @@ function openCreateForm() {
   modal(`<h2>방 만들기</h2>
     <label class="note" for="cRoom">방 이름</label>
     <input id="cRoom" maxlength="20" value="${esc(name)}의 방">
-    <label class="note" for="cGame">게임</label>
-    <select id="cGame">${PICKABLE.map((g) => `<option value="${g}">${GAMES[g].name}</option>`).join('')}</select>
-    <label class="note" for="cLv" id="cLvLabel">난이도</label>
-    <select id="cLv"></select>
-    <p class="note" style="margin:0">방에 들어간 뒤에도 대기실에서 게임과 난이도·판 크기를 바꿀 수 있어요.</p>
+    <p class="note" style="margin:0">게임·난이도·승리 조건은 방을 만든 뒤 대기실에서 골라요.</p>
     <div class="seg" role="radiogroup" aria-label="공개 설정">
       <button type="button" class="segb" data-v="open" aria-checked="true" role="radio">누구나 입장</button>
       <button type="button" class="segb" data-v="lock" aria-checked="false" role="radio">🔒 비밀번호</button>
     </div>
     <input id="cPw" type="password" maxlength="20" placeholder="비밀번호" aria-label="비밀번호" hidden>
     <div class="row" style="justify-content:flex-end"><button class="btn ghost" data-close type="button">취소</button><button class="btn primary" id="cGo" type="button">만들기</button></div>`, (el) => {
-    el.querySelector('#cGame').value = homeGame;
-    if (PICKABLE.length < 2) { el.querySelector('#cGame').hidden = true; el.querySelector('label[for=cGame]').hidden = true; }
-    const fillLv = () => {
-      const G = GAMES[el.querySelector('#cGame').value];
-      el.querySelector('#cLvLabel').textContent = G.levelLabel;
-      el.querySelector('#cLv').innerHTML = G.levels.map((l) => `<option value="${l.v}">${l.name}</option>`).join('') + '<option value="0">섞어서</option>';
-      el.querySelector('#cLv').value = String(G.defaultLevel);
-    };
-    fillLv();
-    el.querySelector('#cGame').onchange = fillLv;
     let lock = false;
     el.querySelectorAll('.segb').forEach((b) => b.onclick = () => {
       lock = b.dataset.v === 'lock';
@@ -1936,10 +1954,11 @@ function openCreateForm() {
       ev.target.disabled = true;
       const roomName = (el.querySelector('#cRoom').value || '').trim().slice(0, 20) || `${name}의 방`;
       closeModal();
-      await createRoom({ roomName, game: el.querySelector('#cGame').value, level: +el.querySelector('#cLv').value, pw });
+      await createRoom({ roomName, pw });
     };
   });
 }
+const roomGames = (v) => (Array.isArray(v.games) ? v.games : Object.values(v.games || {}).length ? Object.values(v.games) : [v.game]).filter((g) => GAMES[g]);
 let roomListOff = null;
 function stopRoomList() { if (roomListOff) { roomListOff(); roomListOff = null; } }
 async function openRoomList() {
@@ -1957,13 +1976,13 @@ async function openRoomList() {
     const q = db.ref('lobby').orderByChild('updatedAt').limitToLast(50);
     const cb = (snap) => {
       const rooms = [];
-      snap.forEach((c) => { const v = c.val(); if (v && fbNow() - (v.updatedAt || 0) < 120000 && (!ONLY_GAME || v.game === ONLY_GAME)) rooms.push({ code: c.key, ...v }); });
+      snap.forEach((c) => { const v = c.val(); if (v && v.v === 2 && fbNow() - (v.updatedAt || 0) < 120000 && roomGames(v).every((g) => PICKABLE.includes(g))) rooms.push({ code: c.key, ...v }); });
       rooms.sort((a, b) => (a.phase === 'lobby' ? 0 : 1) - (b.phase === 'lobby' ? 0 : 1) || (b.createdAt || 0) - (a.createdAt || 0));
       list.innerHTML = rooms.length ? rooms.map((r) => {
         const playing = r.phase !== 'lobby', full = (r.players || 0) >= 6;
         return `<button class="room" type="button" data-code="${esc(r.code)}" ${playing || full ? 'disabled' : ''}>
           <span class="room-name">${r.locked ? '🔒 ' : ''}${esc(r.name || '이름 없는 방')}</span>
-          <span class="room-meta"><span class="chip">${GAMES[r.game] ? GAMES[r.game].name : '게임'}</span><span class="chip">${r.players || 1}/6명</span><span class="chip ${playing ? 'warn' : 'on'}">${playing ? '게임 중' : full ? '가득 참' : '대기 중'}</span></span>
+          <span class="room-meta">${roomGames(r).map((g) => `<span class="chip">${GAMES[g].name}</span>`).join('')}<span class="chip">${r.players || 1}/6명</span><span class="chip ${playing ? 'warn' : 'on'}">${playing ? '게임 중' : full ? '가득 참' : '대기 중'}</span></span>
           <span class="room-host note">방장 ${esc(r.host || '')} · ${esc(r.code)}</span>
         </button>`;
       }).join('') : '<p class="note">열린 방이 없어요. 방을 직접 만들어 보세요!</p>';
@@ -1994,7 +2013,7 @@ function onState(s) {
   $('countdown').hidden = s.phase !== 'countdown';
   if (s.seed && s.seed !== lastSeed) {
     lastSeed = s.seed;
-    const p = GAMES[s.game].puzzle(s.seed), extra = `<span class="chip">R${s.round} · ${s.target}점 선승</span>`;
+    const p = GAMES[s.game].puzzle(s.seed), extra = `<span class="chip">R${s.round} · ${s.target}승 선승</span>`;
     if (s.game === 'code') { renderCode(p, extra); $('buzzNote').hidden = true; }
     else renderFence(p, extra, (edges) => { sendOrHandle({ t: 'solved', cid: myCid, edges }); });
   }
@@ -2030,9 +2049,8 @@ function renderLobby(s) {
     `<div class="player"><span>${esc(p.name)}${p.cid === myCid ? '<span class="you">나</span>' : ''}</span><span class="note">${p.cid === s.hostCid ? '방장' : ''}</span></div>`).join('');
   $('hostControls').hidden = !net.isHost;
   $('lobbyWait').hidden = net.isHost;
-  const lvName = s.level ? ((GAMES[s.game].levels.find((l) => l.v === s.level) || {}).name || '') : '섞어서';
-  $('lobbyWait').textContent = `방장이 시작하기를 기다리고 있어요 · ${GAMES[s.game].name}${lvName ? ' ' + lvName : ''}`;
-  $('btnStart').disabled = s.players.length < 2;
+  $('lobbyWait').textContent = `방장이 시작하기를 기다리고 있어요 · ${setupText(s)}`;
+  if (net.isHost) renderSetup();
   $('lobbyNote').textContent = hasClaudeRoom()
     ? '이 페이지를 공유받은 사람만 참가할 수 있어요.'
     : useLobbyList() ? '방 목록에서 이 방을 고르거나 코드를 입력하면 들어올 수 있어요. 게임이 끝날 때까지 이 화면을 켜 두세요.'
@@ -2044,32 +2062,55 @@ function hostToLobby(why) {
   host.players.forEach((p) => (p.score = 0)); host.round = 0; host.seed = 0; host.phase = 'lobby';
   host.reveal = null; host.locked = []; host.buzz = null; host.roundEnd = null; host.cdEnd = null;
   if (why) hostEvent('info', why);
-  $('gameSel').value = host.game; fillLevelSel(host.game, host.level); $('targetSel').value = String(host.target);
+  host.history = []; host.curLevel = 0;
+  renderSetup();
   hostPush();
 }
 $('btnToLobby').addEventListener('click', () => {
   if (!host) return;
   if (host.phase === 'over') { hostToLobby(); return; }
-  modal(`<h2>게임 바꾸기</h2><p>지금 대결을 멈추고 대기실로 돌아갈까요? 점수는 초기화돼요.</p>
+  modal(`<h2>설정 바꾸기</h2><p>지금 대결을 멈추고 대기실로 돌아갈까요? 승수는 초기화돼요.</p>
     <div class="row" style="justify-content:flex-end"><button class="btn ghost" data-close type="button">계속하기</button><button class="btn primary" id="mToLobby" type="button">대기실로</button></div>`, (el) => {
-    el.querySelector('#mToLobby').onclick = () => { closeModal(); hostToLobby('방장이 게임을 바꾸려고 대기실로 돌아왔어요'); };
+    el.querySelector('#mToLobby').onclick = () => { closeModal(); hostToLobby('방장이 설정을 바꾸려고 대기실로 돌아왔어요'); };
   });
 });
 function showOver(s) {
   if (!$('modal').hidden && $('modalBody').dataset.kind === 'over') return;
   const sorted = [...s.players].sort((a, b) => b.score - a.score);
   const top = sorted[0];
-  modal(`<h2>${top ? esc(top.name) + ' 승리!' : '대결 종료'}</h2>
-    <div class="players">${sorted.map((p) => `<div class="player"><span>${esc(p.name)}${p.cid === myCid ? '<span class="you">나</span>' : ''}</span><b>${p.score}점</b></div>`).join('')}</div>
+  const tie = !top || (sorted[1] && sorted[1].score === top.score);
+  const hist = Array.isArray(s.history) ? s.history : Object.values(s.history || {});
+  const lvName = (h) => LEVEL_NAMES[h.lv] || '';
+  const gName = (h) => (GAMES[h.g] ? GAMES[h.g].name : '');
+  const headline = tie ? '동점으로 대결 종료' : `${top.name} ${top.score}승으로 승리!`;
+  const scoreLine = sorted.map((p) => `${p.name} ${p.score}승`).join(' · ');
+  const share = `🏆 유배지 퍼즐 대결 결과${net && net.roomName ? ` · ${net.roomName}` : ''}\n${headline}\n${scoreLine} (${hist.length}라운드 · ${s.target}승 선승)` +
+    (hist.length ? '\n' + hist.map((h) => `R${h.r} ${gName(h)} ${lvName(h)} · ${h.w || '시간 종료'}`).join('\n') : '') +
+    (SHARE_URL ? `\n${SHARE_URL}` : '');
+  const isHost = net && net.isHost;
+  modal(`<h2>${tie ? '대결 종료' : '🏆 ' + esc(top.name) + ' 승리!'}</h2>
+    <p class="over-sub">${tie ? '동점으로 끝났어요' : `${top.score}승으로 이겼어요`} · ${hist.length}라운드 · ${s.target}승 선승</p>
+    <div class="players">${sorted.map((p, i) => `<div class="player"><span>${!tie && i === 0 ? '🏆 ' : ''}${esc(p.name)}${p.cid === myCid ? '<span class="you">나</span>' : ''}</span><b>${p.score}승</b></div>`).join('')}</div>
+    ${hist.length ? `<div class="hist">${hist.map((h) => `<div class="hist-row"><span>R${h.r} ${gName(h)} <span class="sub">${lvName(h)}</span></span><span>${h.w ? esc(h.w) : '<span class="sub">시간 종료</span>'}</span></div>`).join('')}</div>` : ''}
     <div class="row" style="justify-content:center">
-      ${net && net.isHost ? '<button class="btn primary" id="mAgain" type="button">한 판 더 · 게임 바꾸기</button>' : '<span class="note">방장이 대기실로 돌아가면 이어서 해요</span>'}
+      <button class="btn" id="mShareOver" type="button">결과 공유</button>
+      ${isHost ? '<button class="btn primary" id="mAgain" type="button">한 판 더 · 설정 바꾸기</button>' : ''}
       <button class="btn ghost" id="mOut" type="button">나가기</button>
-    </div>`, (el) => {
+    </div>
+    ${isHost ? '' : '<p class="note" style="margin:0;text-align:center">방장이 대기실로 돌아가면 이어서 해요</p>'}`, (el) => {
     el.dataset.kind = 'over';
+    el.querySelector('#mShareOver').onclick = () => shareText(share);
     const again = el.querySelector('#mAgain');
     if (again) again.onclick = () => { el.dataset.kind = ''; hostToLobby(); };
     el.querySelector('#mOut').onclick = () => { el.dataset.kind = ''; closeModal(); leaveNet(); show('viewHome'); };
   });
+}
+// 휴대폰이면 공유 시트, 아니면 복사
+async function shareText(text) {
+  if (navigator.share && /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)) {
+    try { await navigator.share({ text }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  copy(text);
 }
 
 // ---------- 울타리 치기 결과 비교 (라운드 끝) ----------
@@ -2116,7 +2157,7 @@ function showCompare(s) {
   const isHost = net && net.isHost;
   $('cmpTitle').textContent = `라운드 ${s.round} 결과 · ${winner ? winner.name + ' 완성!' : '시간 종료'}`;
   $('cmpGrid').innerHTML = cards.join('');
-  $('cmpScores').textContent = s.players.map((x) => `${x.name} ${x.score}점`).join(' · ');
+  $('cmpScores').textContent = s.players.map((x) => `${x.name} ${x.score}승`).join(' · ');
   $('btnCmpNext').hidden = !isHost;
   $('cmpWait').hidden = !!isHost;
   $('cmp').hidden = false;
@@ -2137,7 +2178,7 @@ function netTicker() {
   const st = $('statusLine');
   let text = '', hot = false;
   if (s.phase === 'play') {
-    if (s.game === 'fence') text = '먼저 완성하면 1점!';
+    if (s.game === 'fence') text = '먼저 완성하면 1승!';
     else if (s.buzz) {
       const who = s.players.find((p) => p.cid === s.buzz.cid);
       text = s.buzz.cid === myCid ? '코드 입력!' : `${who ? who.name : '누군가'} 답하는 중 ${Math.max(0, Math.ceil((s.buzz.remain - el) / 1000))}초`;
@@ -2160,7 +2201,6 @@ function renderHome() {
   document.querySelectorAll('.gtab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.game === homeGame)));
   $('soloBlurb').textContent = G.blurb;
   const box = $('levels');
-  box.classList.toggle('sizes', homeGame === 'fence');
   box.innerHTML = G.levels.map((l) => `<button class="lv" type="button" data-level="${l.v}">${l.stars ? `<span class="stars">${l.stars}</span>` : ''}<b>${l.name}</b><span class="lv-sub">${l.sub}</span></button>`).join('');
 }
 document.querySelectorAll('.gtab').forEach((b) => b.addEventListener('click', () => {
@@ -2181,27 +2221,62 @@ $('levels').addEventListener('click', (e) => {
 });
 $('btnSeed').addEventListener('click', () => {
   const v = parseInt($('seedInput').value, 10);
-  if (Number.isFinite(v) && v >= 0 && v < 1.6e7 && (v === 0 || GAMES[homeGame].levels.some((l) => l.v === Math.floor(v / 1e6)))) startSolo(homeGame, v); else toast('문제 번호를 다시 확인해 주세요', 'bad');
+  if (Number.isFinite(v) && v >= 0 && v < 1.6e7 && (v === 0 || GAMES[homeGame].validSeed(v))) startSolo(homeGame, v); else toast('문제 번호를 다시 확인해 주세요', 'bad');
 });
 $('btnCreate').addEventListener('click', openCreateForm);
 $('btnRooms').addEventListener('click', openRoomList);
 $('btnJoin').addEventListener('click', () => joinRoom($('joinCode').value));
 $('joinCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnJoin').click(); });
-function fillLevelSel(game, keep) {
-  const G = GAMES[game], sel = $('levelSel');
-  $('levelLabel').textContent = G.levelLabel;
-  sel.innerHTML = G.levels.map((l) => `<option value="${l.v}">${l.name}</option>`).join('') + '<option value="0">섞어서</option>';
-  sel.value = keep != null && [...sel.options].some((o) => o.value === String(keep)) ? String(keep) : String(G.defaultLevel);
+// ---------- 대기실 설정 (방장): 게임·난이도 여러 개 고르기, 승리 조건 입력 ----------
+const LEVEL_NAMES = { 1: '쉬움', 2: '보통', 3: '어려움' };
+const asArr = (v) => (Array.isArray(v) ? v : Object.values(v || {}));
+function setupText(s) {
+  const games = asArr(s.games).length ? asArr(s.games) : [s.game];
+  return `${games.filter((g) => GAMES[g]).map((g) => GAMES[g].name).join('·')} / ${asArr(s.levels).map((v) => LEVEL_NAMES[v]).join('·') || '보통'} / ${s.target}승 선승`;
 }
-$('levelSel').addEventListener('change', () => { if (host && host.phase === 'lobby') { host.level = +$('levelSel').value; hostPush(); } });
-$('gameSel').addEventListener('change', () => {
-  fillLevelSel($('gameSel').value);
-  if (host) { host.game = $('gameSel').value; host.level = +$('levelSel').value; hostPush(); }
+function renderSetup() {
+  if (!host) return;
+  const pick = (v, label, on) => `<button class="pick" type="button" data-v="${v}" aria-pressed="${on}">${label}</button>`;
+  $('gamePicks').innerHTML = PICKABLE.map((g) => pick(g, GAMES[g].name, host.games.includes(g))).join('');
+  $('levelPicks').innerHTML = [1, 2, 3].map((v) => pick(v, LEVEL_NAMES[v], host.levels.includes(v))).join('');
+  $('gamesAll').textContent = host.games.length === PICKABLE.length ? '전체 해제' : '전체 선택';
+  $('levelsAll').textContent = host.levels.length === 3 ? '전체 해제' : '전체 선택';
+  if (document.activeElement !== $('targetIn')) $('targetIn').value = String(host.target);
+  const ok = host.games.length && host.levels.length;
+  const many = host.games.length * host.levels.length > 1;
+  $('setupSummary').textContent = !ok ? '게임과 난이도를 하나 이상 골라 주세요.'
+    : `${many ? '고른 게임·난이도 중에서 라운드마다 무작위로 나와요. ' : ''}먼저 ${host.target}승 하는 사람이 이겨요.`;
+  $('btnStart').disabled = !ok || host.players.length < 2;
+}
+function toggleIn(arr, v, all) {
+  if (v === '*') return arr.length === all.length ? [] : all.slice();
+  return arr.includes(v) ? arr.filter((x) => x !== v) : all.filter((x) => x === v || arr.includes(x));
+}
+function setupChanged() { if (host.games.length) host.game = host.games[0]; renderSetup(); hostPush(); }
+$('gamePicks').addEventListener('click', (e) => {
+  const b = e.target.closest('.pick'); if (!b || !host || host.phase !== 'lobby') return;
+  host.games = toggleIn(host.games, b.dataset.v, PICKABLE); setupChanged();
+});
+$('gamesAll').addEventListener('click', () => { if (!host || host.phase !== 'lobby') return; host.games = toggleIn(host.games, '*', PICKABLE); setupChanged(); });
+$('levelPicks').addEventListener('click', (e) => {
+  const b = e.target.closest('.pick'); if (!b || !host || host.phase !== 'lobby') return;
+  host.levels = toggleIn(host.levels, +b.dataset.v, [1, 2, 3]); setupChanged();
+});
+$('levelsAll').addEventListener('click', () => { if (!host || host.phase !== 'lobby') return; host.levels = toggleIn(host.levels, '*', [1, 2, 3]); setupChanged(); });
+$('targetIn').addEventListener('input', () => {
+  if (!host) return;
+  const v = parseInt($('targetIn').value, 10);
+  if (Number.isFinite(v) && v >= 1 && v <= 20 && v !== host.target) { host.target = v; setupChanged(); }
+});
+$('targetIn').addEventListener('change', () => {
+  if (!host) return;
+  host.target = Math.min(20, Math.max(1, parseInt($('targetIn').value, 10) || host.target));
+  $('targetIn').value = String(host.target); setupChanged();
 });
 $('btnStart').addEventListener('click', () => {
-  if (!host || host.players.length < 2) return;
-  host.game = $('gameSel').value; host.target = +$('targetSel').value; host.level = +$('levelSel').value;
-  host.players.forEach((p) => (p.score = 0)); host.round = 0;
+  if (!host || host.players.length < 2 || !host.games.length || !host.levels.length) return;
+  host.target = Math.min(20, Math.max(1, parseInt($('targetIn').value, 10) || host.target));
+  host.players.forEach((p) => (p.score = 0)); host.round = 0; host.history = [];
   hostNextRound();
 });
 $('btnLeave').addEventListener('click', () => { leaveNet(); show('viewHome'); });
@@ -2224,9 +2299,7 @@ $('btnRules').addEventListener('click', () => {
 // ---------- 시작 ----------
 if (ONLY_GAME) {
   document.querySelector('.gtabs').hidden = true;
-  $('gameSel').innerHTML = PICKABLE.map((g) => `<option value="${g}">${GAMES[g].name}</option>`).join('');
-  $('gameSel').closest('.row').hidden = true;
-  $('btnToLobby').textContent = GAMES[ONLY_GAME].levelLabel + ' 바꾸기';
+  $('gameBlock').hidden = true;
 }
 $('nameInput').value = store.get('name', '');
 renderHome();
