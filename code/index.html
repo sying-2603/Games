@@ -67,6 +67,19 @@ body.playing .brand h1 { font-size: 19px; }
 .brand p { margin: 0; color: var(--muted); font-size: 12.5px; }
 .top-actions { display: flex; gap: 6px; flex: none; }
 .top-actions .btn { white-space: nowrap; }
+.chat-btn { position: relative; }
+.chat-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #e0413a; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.chat { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: min(520px, 100vw); height: min(62vh, 460px); z-index: 60; background: var(--slab); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.45), inset 0 0 0 1px #34413f; display: grid; grid-template-rows: auto 1fr auto; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); gap: 8px; }
+.chat-head { display: flex; align-items: center; gap: 8px; } .chat-head .note { margin: 0; flex: 1; font-size: 12px; }
+.chat-list { list-style: none; margin: 0; padding: 4px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; background: var(--stone); border-radius: 10px; }
+.chat-list li { max-width: 85%; align-self: flex-start; background: var(--slab-2); border-radius: 12px 12px 12px 4px; padding: 6px 10px; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.chat-list li.me { align-self: flex-end; background: rgba(217,138,78,.22); border-radius: 12px 12px 4px 12px; }
+.chat-list li b { display: block; font-size: 12px; color: var(--copper); }
+.chat-list li.sys { align-self: center; background: none; color: var(--muted); font-size: 12px; }
+.chat-empty { margin: auto; color: var(--muted); font-size: 13px; }
+.chat-form { display: flex; gap: 6px; } .chat-form input { flex: 1; min-width: 0; font-size: 16px; }
+.chat-peek { position: fixed; top: 56px; right: 10px; z-index: 55; max-width: min(300px, 80vw); background: var(--slab-2); border-radius: 12px; padding: 8px 12px; font-size: 13px; box-shadow: 0 6px 20px rgba(0,0,0,.4); cursor: pointer; overflow-wrap: anywhere; }
+.chat-peek b { color: var(--copper); margin-right: 6px; }
 .btn {
   border: 1px solid #44524f; background: var(--slab); border-radius: 10px;
   padding: 10px 14px; font-weight: 600; transition: background .15s, border-color .15s;
@@ -190,7 +203,7 @@ body.playing .brand h1 { font-size: 19px; }
 .modal input, .modal select { width: 100%; }
 
 /* 게임 탭 */
-.gtabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--stone); border-radius: 12px; padding: 4px; }
+.gtabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--stone); border-radius: 12px; padding: 4px; }
 .gtab { border: 0; background: transparent; border-radius: 9px; padding: 9px 6px; font-weight: 600; color: var(--muted); }
 .gtab[aria-selected="true"] { background: var(--slab-2); color: var(--copper); box-shadow: inset 0 0 0 1px #44524f; }
 
@@ -205,6 +218,18 @@ body.playing .brand h1 { font-size: 19px; }
 .zoom-btn { position: absolute; top: 6px; right: 6px; z-index: 2; padding: 6px 10px; font-size: 13px; border-radius: 10px; background: rgba(20,28,28,.85); }
 #fenceSvg { display: block; touch-action: manipulation; cursor: pointer; user-select: none; -webkit-user-select: none; }
 #fenceSvg .f-bg { fill: #f1eef6; }
+#symSvg { touch-action: none; -webkit-user-select: none; user-select: none; }
+#symSvg .s-bg, .mini-sym .s-bg { fill: #f1eef6; }
+#symSvg .s-grid { stroke: #d9d2e6; stroke-width: 2; fill: none; }
+.s-piece .s-fill polygon { fill: var(--pc); stroke: var(--pc); stroke-width: 1.5; stroke-linejoin: round; }
+.s-piece .s-edge { fill: none; stroke: rgba(30, 20, 60, .55); stroke-width: 4; stroke-linecap: round; }
+#symSvg .s-piece { cursor: grab; }
+#symSvg .s-piece.sel .s-edge { stroke: #fff; stroke-width: 8; }
+#symSvg .s-piece.sel .s-fill { filter: brightness(1.12); }
+#symSvg .s-over { fill: #e0413a; opacity: .75; pointer-events: none; }
+.s-axis { stroke: #e0413a; stroke-width: 6; stroke-dasharray: 18 12; pointer-events: none; }
+.mini-sym { width: 100%; height: auto; display: block; }
+.mini-sym .s-edge { stroke-width: 2; } .mini-sym .s-axis { stroke-width: 3; stroke-dasharray: 8 6; }
 #fenceSvg .f-dot { fill: #5a2fa0; }
 #fenceSvg .f-dot.bad { fill: #e0413a; }
 #fenceSvg .f-line { stroke: #5a2fa0; stroke-width: 11; stroke-linecap: round; }
@@ -308,6 +333,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <p>팬 제작 게임 · 데블스 플랜3 유배지 매치에서 영감을 받았어요</p>
     </div>
     <div class="top-actions">
+      <button class="btn ghost sm chat-btn" id="btnChat" type="button" hidden aria-label="채팅 열기">💬<span class="chat-badge" id="chatBadge" hidden></span></button>
       <button class="btn ghost sm" id="btnRules" type="button">규칙</button>
       <button class="btn ghost sm" id="btnToLobby" type="button" hidden title="대기실로 돌아가 게임·난이도·승리 조건을 바꿔요">설정 바꾸기</button>
       <button class="btn ghost sm" id="btnHome" type="button" hidden>처음으로</button>
@@ -320,6 +346,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <div class="gtabs" role="tablist" aria-label="게임 고르기">
         <button class="gtab" role="tab" type="button" data-game="code">비밀 코드</button>
         <button class="gtab" role="tab" type="button" data-game="fence">울타리 치기</button>
+        <button class="gtab" role="tab" type="button" data-game="sym">대칭 퍼즐</button>
       </div>
       <h2>기록 세우기</h2>
       <p id="soloBlurb"></p>
@@ -408,6 +435,10 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         <button class="btn zoom-btn" id="btnZoom" type="button" aria-pressed="false" hidden>🔍 확대</button>
         <p class="fence-cap">빈 곳을 누르면 선, 선을 누르면 지우기 · 길게 누르면 ✕(안 긋는 선)</p>
       </div>
+      <div class="fence-board" id="symBoard" hidden>
+        <div class="fence-area" id="symArea"><svg id="symSvg" role="img" aria-label="대칭 퍼즐 게임판"></svg></div>
+        <p class="fence-cap" id="symCap">조각을 끌어서 옮기고, 선택한 조각을 한 번 더 누르면 회전</p>
+      </div>
     </div>
     <div class="dock" id="dock">
       <div class="timer" id="timer">0:00<small id="timerLabel">경과</small></div>
@@ -419,6 +450,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
         <button class="btn mode-x" id="btnMarkX" type="button" aria-pressed="false" title="안 긋는 선을 ✕로 표시해요 (선 모드에서는 길게 누르기)">✕ 표시</button>
         <button class="btn" id="btnUndo" type="button">되돌리기</button>
         <button class="btn" id="btnClearFence" type="button">모두 지우기</button>
+      </div>
+      <div class="fence-ctl" id="symCtl" hidden>
+        <button class="btn" id="btnRot" type="button" disabled>↻ 돌리기</button>
+        <button class="btn" id="btnFlip" type="button" disabled>⇋ 뒤집기</button>
+        <button class="btn" id="btnSymReset" type="button">처음 배치</button>
       </div>
       <div class="dock-right">
         <button class="btn sm" id="btnClearMemo" type="button">메모 지우기</button>
@@ -455,6 +491,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 </div>
 <div class="modal-bg" id="modal" hidden><div class="modal" id="modalBody" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" hidden></div>
+<div class="chat-peek" id="chatPeek" hidden></div>
+<div class="chat" id="chatPanel" hidden role="dialog" aria-label="채팅">
+  <div class="chat-head"><b>채팅</b><span class="note">방이 닫히면 사라져요</span><button class="btn ghost sm" id="btnChatClose" type="button" aria-label="채팅 닫기">닫기</button></div>
+  <ol class="chat-list" id="chatList"></ol>
+  <form class="chat-form" id="chatForm" autocomplete="off"><input id="chatInput" maxlength="100" placeholder="메시지 입력" enterkeyhint="send"><button class="btn primary" type="submit">보내기</button></form>
+</div>
 
 <script>
 /* 비밀 코드 퍼즐 엔진 — 덱, 조건, 판정, 문제 생성 */
@@ -1022,11 +1064,323 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
   else root.FENCE = api;
 })(this);
 
+// ===== 대칭 퍼즐 엔진 =====
+// 판의 한 칸을 대각선 두 줄로 4개의 삼각형(위·오른쪽·아래·왼쪽)으로 나눈다.
+// 조각은 이 삼각형들의 모음이라 네모, 반쪽 삼각형, 사다리꼴, 홈 파인 모양 등을 모두 표현할 수 있다.
+// 삼각형은 한 칸을 6으로 본 좌표계의 무게중심 점(정수)으로 다룬다:
+//   위 (6x+3, 6y+1) · 오른쪽 (6x+5, 6y+3) · 아래 (6x+3, 6y+5) · 왼쪽 (6x+1, 6y+3)
+// 회전·뒤집기·평행이동·거울 반사가 모두 이 점들끼리의 정수 변환이 된다.
+(function () {
+  'use strict';
+  const K = 1 << 12; // 점 → 정수 키 (좌표 범위 -2000..2000)
+  const key = (x, y) => (x + 2048) * 4096 + (y + 2048);
+  const unkey = (k) => [Math.floor(k / 4096) - 2048, (k % 4096) - 2048];
+  void K;
+
+  // 삼각형(cell x, y, d: 0 위 1 오른쪽 2 아래 3 왼쪽) ↔ 무게중심 점
+  const OFF = [[3, 1], [5, 3], [3, 5], [1, 3]];
+  const tri = (x, y, d) => key(6 * x + OFF[d][0], 6 * y + OFF[d][1]);
+  function decode(k) {
+    const [px, py] = unkey(k);
+    const x = Math.floor(px / 6), y = Math.floor(py / 6), mx = px - 6 * x, my = py - 6 * y;
+    for (let d = 0; d < 4; d++) if (OFF[d][0] === mx && OFF[d][1] === my) return { x, y, d };
+    return null;
+  }
+  // 삼각형 꼭짓점 (칸 크기 1 기준)
+  function corners(t) {
+    const { x, y, d } = t, c = [x + 0.5, y + 0.5];
+    if (d === 0) return [[x, y], [x + 1, y], c];
+    if (d === 1) return [[x + 1, y], [x + 1, y + 1], c];
+    if (d === 2) return [[x + 1, y + 1], [x, y + 1], c];
+    return [[x, y + 1], [x, y], c];
+  }
+  // 변으로 맞닿은 이웃 삼각형
+  function neighbors(t) {
+    const { x, y, d } = t;
+    const out = [tri(x, y, (d + 1) % 4), tri(x, y, (d + 3) % 4)];
+    if (d === 0) out.push(tri(x, y - 1, 2));
+    else if (d === 1) out.push(tri(x + 1, y, 3));
+    else if (d === 2) out.push(tri(x, y + 1, 0));
+    else out.push(tri(x - 1, y, 1));
+    return out;
+  }
+
+  // ----- 변환 -----
+  const mapSet = (set, f) => { const o = []; for (const k of set) { const [x, y] = unkey(k); const [a, b] = f(x, y); o.push(key(a, b)); } return o; };
+  const rot90 = (set) => mapSet(set, (x, y) => [-y, x]);
+  const flipH = (set) => mapSet(set, (x, y) => [-x, y]);
+  // 칸 단위로 왼쪽 위가 (0,0)이 되도록 이동
+  function normalize(set) {
+    let mx = Infinity, my = Infinity;
+    for (const k of set) { const [x, y] = unkey(k); mx = Math.min(mx, x); my = Math.min(my, y); }
+    const dx = Math.floor(mx / 6) * 6, dy = Math.floor(my / 6) * 6;
+    return mapSet(set, (x, y) => [x - dx, y - dy]).sort((a, b) => a - b);
+  }
+  const shift = (set, cx, cy) => mapSet(set, (x, y) => [x + 6 * cx, y + 6 * cy]);
+  // 회전 r(0~3)·뒤집기 f 적용 후 정규화
+  function orient(base, r, f) { let s = base.slice(); if (f) s = flipH(s); for (let i = 0; i < r; i++) s = rot90(s); return normalize(s); }
+  function bbox(set) { // 칸 단위 크기
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const k of set) { const t = decode(k); x0 = Math.min(x0, t.x); y0 = Math.min(y0, t.y); x1 = Math.max(x1, t.x); y1 = Math.max(y1, t.y); }
+    return { x0, y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+  }
+
+  // ----- 판정 -----
+  function connected(set) {
+    const S = new Set(set); if (!S.size) return false;
+    const start = S.values().next().value, seen = new Set([start]), q = [start];
+    while (q.length) { const k = q.pop(); for (const n of neighbors(decode(k))) if (S.has(n) && !seen.has(n)) { seen.add(n); q.push(n); } }
+    return seen.size === S.size;
+  }
+  // 선대칭 축 찾기: 세로 · 가로 · 대각선(↘) · 대각선(↙). 축은 무게중심을 지나야 한다.
+  function symmetryAxes(set) {
+    const S = new Set(set), n = S.size; if (!n) return [];
+    let sx = 0, sy = 0; for (const k of S) { const [x, y] = unkey(k); sx += x; sy += y; }
+    const axes = [];
+    const test = (f) => { for (const k of S) { const [x, y] = unkey(k); const r = f(x, y); if (!r || !S.has(key(r[0], r[1]))) return false; } return true; };
+    // 2×평균이 정수여야 축 위치가 격자와 맞는다
+    if ((2 * sx) % n === 0) { const c2 = (2 * sx) / n; if (test((x, y) => [c2 - x, y])) axes.push({ type: 'v', c: c2 / 2 }); }
+    if ((2 * sy) % n === 0) { const c2 = (2 * sy) / n; if (test((x, y) => [x, c2 - y])) axes.push({ type: 'h', c: c2 / 2 }); }
+    if ((sy - sx) % n === 0) { const k = (sy - sx) / n; if (test((x, y) => [y - k, x + k])) axes.push({ type: 'd', c: k }); }  // y = x + k
+    if ((sx + sy) % n === 0) { const k = (sx + sy) / n; if (test((x, y) => [k - y, k - x])) axes.push({ type: 'a', c: k }); } // y = -x + k
+    return axes;
+  }
+  // placements: 조각별 [r, f, dx, dy] → 판 위 삼각형 집합(조각별)
+  function placed(p, placements) {
+    return p.pieces.map((base, i) => { const [r, f, dx, dy] = placements[i]; return shift(orient(base, r, f), dx, dy); });
+  }
+  // 성공 조건: 겹침 없음 · 한 덩어리 · 선대칭
+  function evaluate(p, placements) {
+    const sets = placed(p, placements), all = new Set(); let overlap = false;
+    for (const s of sets) for (const k of s) { if (all.has(k)) overlap = true; all.add(k); }
+    if (overlap) return { ok: false, why: 'overlap' };
+    const arr = [...all];
+    if (!connected(arr)) return { ok: false, why: 'apart' };
+    const axes = symmetryAxes(arr);
+    return axes.length ? { ok: true, axes } : { ok: false, why: 'asym' };
+  }
+  const check = (p, placements) => evaluate(p, placements).ok;
+
+  // ----- 문제 만들기 -----
+  function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  // 난이도별 설정: 조각 수, 반쪽 대칭 도형의 칸 수, 사선 비율, 구멍 확률, 대각선 축 확률
+  const TIERS = {
+    1: { pieces: [2, 2], cells: [4, 6], diag: 0.25, cut: 0.15, hole: 0.15, dAxis: 0.1 },
+    2: { pieces: [2, 3], cells: [6, 8], diag: 0.4, cut: 0.3, hole: 0.3, dAxis: 0.25 },
+    3: { pieces: [3, 3], cells: [7, 10], diag: 0.5, cut: 0.45, hole: 0.4, dAxis: 0.35 },
+  };
+  const HALF = [[0, 1], [1, 2], [2, 3], [3, 0]]; // 반쪽 칸: 위+오른쪽, 오른쪽+아래, 아래+왼쪽, 왼쪽+위
+
+  function mirrorFn(axis) {
+    // axis: {type:'v', c2} 등. 6배 좌표에서의 반사
+    if (axis.type === 'v') return (x, y) => [axis.c2 - x, y];
+    return (x, y) => [y - axis.k, x + axis.k]; // y = x + k (k는 6의 배수)
+  }
+  function build(seed) {
+    const tier = Math.floor(seed / 1e6), cfg = TIERS[tier] || TIERS[2];
+    const R = rng(seed * 2654435761 % 4294967296 + 17);
+    const ri = (a, b) => a + Math.floor(R() * (b - a + 1));
+    for (let attempt = 0; attempt < 400; attempt++) {
+      const diagAxis = R() < cfg.dAxis;
+      const nCells = ri(cfg.cells[0], cfg.cells[1]);
+      // 1) 축 한쪽에 칸을 무작위로 키운다 (축에 닿도록 시작)
+      const cells = new Map(); // "x,y" → 삼각형 집합(배열)
+      const ck = (x, y) => x + ',' + y;
+      let axis;
+      if (!diagAxis) {
+        const odd = R() < 0.5; // 축이 칸 가운데를 지나면 홀수 폭
+        axis = { type: 'v', c2: odd ? 6 * 0 + 6 : 0 }; // 홀수: x=0 칸의 가운데(6·0.5·2), 짝수: x=0 선
+        if (odd) axis.c2 = 6; // 2*c = 6 → c = 3 (칸 0의 가운데)
+        const x0 = odd ? 0 : 0;
+        const startY = 0;
+        cells.set(ck(x0, startY), [0, 1, 2, 3]);
+        let guard = 0;
+        while (cells.size < nCells && guard++ < 500) {
+          const list = [...cells.keys()]; const [x, y] = list[Math.floor(R() * list.length)].split(',').map(Number);
+          const dir = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(R() * 4)];
+          const nx = x + dir[0], ny = y + dir[1];
+          if (nx < 0 || nx > 4 || ny < -3 || ny > 3) continue; // 오른쪽 반만 (x≥0)
+          if (!cells.has(ck(nx, ny))) cells.set(ck(nx, ny), [0, 1, 2, 3]);
+        }
+      } else {
+        axis = { type: 'd', k: 0 }; // y = x (6배 좌표에서도 y = x)
+        cells.set(ck(0, 0), [0, 1, 2, 3]);
+        let guard = 0;
+        while (cells.size < nCells && guard++ < 500) {
+          const list = [...cells.keys()]; const [x, y] = list[Math.floor(R() * list.length)].split(',').map(Number);
+          const dir = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(R() * 4)];
+          const nx = x + dir[0], ny = y + dir[1];
+          if (ny < nx - 0 && false) continue;
+          if (ny > nx || nx > 5 || ny < -4) continue; // 대각선 위쪽 반 (y ≤ x)
+          if (!cells.has(ck(nx, ny))) cells.set(ck(nx, ny), [0, 1, 2, 3]);
+        }
+      }
+      // 2) 바깥 모서리 칸을 반쪽 칸으로 깎아 사선을 만든다
+      const has = (x, y) => cells.has(ck(x, y));
+      for (const [kk, tr] of cells) {
+        if (R() >= cfg.diag) continue;
+        const [x, y] = kk.split(',').map(Number);
+        const free = [!has(x, y - 1), !has(x + 1, y), !has(x, y + 1), !has(x - 1, y)]; // 위 오른쪽 아래 왼쪽이 비었나
+        const opts = [];
+        for (let h = 0; h < 4; h++) { // 남길 반쪽 HALF[h], 깎이는 쪽 두 변이 모두 비어 있어야
+          const cutSides = [0, 1, 2, 3].filter((d) => !HALF[h].includes(d));
+          if (cutSides.every((d) => free[d])) opts.push(h);
+        }
+        if (opts.length) { const h = opts[Math.floor(R() * opts.length)]; tr.length = 0; tr.push(...HALF[h]); }
+      }
+      let half = [];
+      for (const [kk, tr] of cells) { const [x, y] = kk.split(',').map(Number); for (const d of tr) half.push(tri(x, y, d)); }
+      // 3) 거울 복사해 대칭 도형 완성
+      const f = mirrorFn(axis);
+      const full = new Set(half); for (const k of mapSet(half, f)) full.add(k);
+      // 4) 구멍: 안쪽 칸 하나(와 그 거울짝)를 비운다
+      if (R() < cfg.hole) {
+        const inner = [];
+        for (const k of full) {
+          const t = decode(k); if (t.d !== 0) continue;
+          const cellTris = [0, 1, 2, 3].map((d) => tri(t.x, t.y, d));
+          if (!cellTris.every((q) => full.has(q))) continue;
+          const around = [[0, -1], [1, 0], [0, 1], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]].every(([a, b]) => [0, 1, 2, 3].every((d) => full.has(tri(t.x + a, t.y + b, d))));
+          if (around) inner.push(cellTris);
+        }
+        if (inner.length) {
+          const pick = inner[Math.floor(R() * inner.length)];
+          const rm = new Set([...pick, ...mapSet(pick, f)]);
+          const trial = [...full].filter((k) => !rm.has(k));
+          if (connected(trial)) { full.clear(); trial.forEach((k) => full.add(k)); }
+        }
+      }
+      const shape = [...full];
+      if (!connected(shape) || !symmetryAxes(shape).length) continue;
+      const total = shape.length;
+      // 5) 조각으로 나누기: 칸 단위 덩어리(일부는 대각선으로 반 갈라 사선 경계)로 고르게 키운다
+      const nPieces = ri(cfg.pieces[0], cfg.pieces[1]);
+      const S = new Set(shape), units = [], unitOf = new Map();
+      const byCell = new Map();
+      for (const k of shape) { const t = decode(k); const c = ck(t.x, t.y); if (!byCell.has(c)) byCell.set(c, []); byCell.get(c).push(t.d); }
+      for (const [c, ds] of byCell) {
+        const [x, y] = c.split(',').map(Number);
+        ds.sort();
+        if (ds.length === 4 && R() < cfg.cut) { const h = Math.floor(R() * 2); const a = HALF[h], b = HALF[h + 2]; units.push(a.map((d) => tri(x, y, d)), b.map((d) => tri(x, y, d))); }
+        else {
+          // 칸 안에서 이어진 삼각형끼리 한 덩어리
+          const left = new Set(ds);
+          while (left.size) {
+            const d0 = left.values().next().value, grp = [d0]; left.delete(d0);
+            for (let i = 0; i < grp.length; i++) for (const nd of [(grp[i] + 1) % 4, (grp[i] + 3) % 4]) if (left.has(nd)) { left.delete(nd); grp.push(nd); }
+            units.push(grp.map((d) => tri(x, y, d)));
+          }
+        }
+      }
+      units.forEach((u, i) => u.forEach((k) => unitOf.set(k, i)));
+      const uAdj = units.map((u) => { const s = new Set(); for (const k of u) for (const n of neighbors(decode(k))) if (S.has(n) && unitOf.get(n) !== unitOf.get(k)) s.add(unitOf.get(n)); return [...s]; });
+      if (units.length < nPieces * 2) continue;
+      // 서로 멀리 떨어진 씨앗
+      const owner = new Array(units.length).fill(-1), size = new Array(nPieces).fill(0);
+      const seeds = [Math.floor(R() * units.length)];
+      const dist = (a) => { const d = new Array(units.length).fill(1e9); d[a] = 0; const q = [a]; for (let i = 0; i < q.length; i++) for (const n of uAdj[q[i]]) if (d[n] > d[q[i]] + 1) { d[n] = d[q[i]] + 1; q.push(n); } return d; };
+      while (seeds.length < nPieces) {
+        const ds = seeds.map(dist); let best = -1, bv = -1;
+        for (let i = 0; i < units.length; i++) { const m = Math.min(...ds.map((d) => d[i])); const v = m + R() * 0.9; if (m > 0 && v > bv) { bv = v; best = i; } }
+        if (best < 0) break; seeds.push(best);
+      }
+      if (seeds.length < nPieces) continue;
+      seeds.forEach((u, i) => { owner[u] = i; size[i] += units[u].length; });
+      let stuck = 0;
+      while (owner.includes(-1) && stuck < 1000) {
+        // 가장 작은 조각부터 이웃 덩어리를 하나 가져온다
+        const order = [...Array(nPieces).keys()].sort((a, b) => size[a] - size[b] + (R() - 0.5) * 2);
+        let grew = false;
+        for (const i of order) {
+          const front = [];
+          for (let u = 0; u < units.length; u++) if (owner[u] === i) for (const n of uAdj[u]) if (owner[n] === -1) front.push(n);
+          if (!front.length) continue;
+          const n = front[Math.floor(R() * front.length)]; owner[n] = i; size[i] += units[n].length; grew = true; break;
+        }
+        if (!grew) stuck++;
+      }
+      if (owner.includes(-1)) continue;
+      const avg = total / nPieces;
+      if (Math.min(...size) < Math.max(4, avg * 0.55)) continue;
+      const pieces = [...Array(nPieces).keys()].map((i) => { const s = []; units.forEach((u, j) => { if (owner[j] === i) s.push(...u); }); return s; });
+      if (!pieces.every(connected)) continue;
+      // 조각 하나가 이미 전체 정답이면 안 됨 · 조각끼리 겹치지 않음은 구성상 보장
+      // 너무 쉬운 문제 거르기: 조각 하나가 혼자서 대칭이고 나머지가 그 거울짝이면 허용, 단 조각 모두가 대칭이면 다시
+      if (tier >= 2 && pieces.every((pc) => symmetryAxes(pc).length)) continue;
+      // 6) 조각을 섞어서 무작위로 돌리고 뒤집어 준다
+      const sol = shape.slice();
+      const given = pieces.map((pc) => orient(pc, ri(0, 3), R() < 0.5 ? 1 : 0));
+      // 정답 배치(조각별 r,f,dx,dy)를 기록: given 조각을 원래 자리로 돌리는 변환을 찾는다
+      const solution = pieces.map((pc, i) => findPlacement(given[i], pc));
+      if (solution.some((s) => !s)) continue;
+      const order = [...given.keys()]; for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+      return {
+        seed, tier, pieces: order.map((i) => given[i]), solutionRaw: order.map((i) => solution[i]),
+        shape: sol, axisType: diagAxis ? 'diag' : 'line', level: tier,
+        levelName: ['', '쉬움', '보통', '어려움'][tier] || '',
+      };
+    }
+    return null;
+  }
+  // 조각 base를 target(같은 모양, 다른 위치·방향)에 맞추는 [r,f,dx,dy]
+  function findPlacement(base, target) {
+    const T = normalize(target), tb = bbox(target);
+    for (let f = 0; f < 2; f++) for (let r = 0; r < 4; r++) {
+      const o = orient(base, r, f);
+      if (o.length === T.length && o.every((v, i) => v === T[i])) return [r, f, tb.x0, tb.y0];
+    }
+    return null;
+  }
+
+  // 판 크기와 시작 배치 (조각들이 서로 떨어져 판 위에 흩어져 있도록)
+  function layout(p, seed) {
+    const R = rng(seed + 99);
+    const boxes = p.pieces.map(bbox);
+    const sb = bbox(p.shape);
+    const N = Math.max(9, Math.max(sb.w, sb.h) + 4, ...boxes.map((b) => Math.max(b.w, b.h) + 2)) + (p.pieces.length > 2 ? 1 : 0);
+    for (let tries = 0; tries < 500; tries++) {
+      const pl = boxes.map((b) => [0, 0, Math.floor(R() * (N - b.w + 1)), Math.floor(R() * (N - b.h + 1))]);
+      // 서로 1칸 이상 떨어져 있고, 처음부터 정답이면 안 됨
+      let ok = true;
+      for (let i = 0; i < pl.length && ok; i++) for (let j = i + 1; j < pl.length && ok; j++) {
+        const a = boxes[i], b = boxes[j], A = pl[i], B = pl[j];
+        if (A[2] < B[2] + b.w + 1 && B[2] < A[2] + a.w + 1 && A[3] < B[3] + b.h + 1 && B[3] < A[3] + a.h + 1) ok = false;
+      }
+      if (ok && !check(p, pl)) return { N, start: pl };
+    }
+    // 실패하면 세로로 쌓기
+    let y = 0; const pl = boxes.map((b) => { const r = [0, 0, 0, y]; y += b.h + 1; return r; });
+    return { N: Math.max(N, y), start: pl };
+  }
+
+  const cache = new Map();
+  function puzzle(seed) {
+    if (cache.has(seed)) return cache.get(seed);
+    let p = build(seed), s = seed;
+    while (!p) { s += 7; p = build(s); }
+    p.seed = seed;
+    const lay = layout(p, seed);
+    p.N = lay.N; p.start = lay.start;
+    // 정답 배치를 판 가운데로 옮겨 둔다
+    const sb = bbox(p.shape), ox = Math.floor((p.N - sb.w) / 2) - sb.x0, oy = Math.floor((p.N - sb.h) / 2) - sb.y0;
+    p.solution = p.solutionRaw.map(([r, f, dx, dy]) => [r, f, dx + ox, dy + oy]);
+    cache.set(seed, p);
+    return p;
+  }
+  const TIER_KEYS = [1, 2, 3];
+  const makeSeed = (lv) => (TIER_KEYS.includes(lv) ? lv : 2) * 1e6 + 1 + Math.floor(Math.random() * 999998);
+  const validSeed = (v) => TIER_KEYS.includes(Math.floor(v / 1e6)) && v % 1e6 > 0;
+
+  const api = { puzzle, makeSeed, validSeed, evaluate, check, placed, orient, bbox, decode, corners, symmetryAxes, connected, normalize, shift, tri, key, unkey };
+  if (typeof window !== 'undefined') window.SYM = api;
+  if (typeof module !== 'undefined') module.exports = api;
+})();
+
 </script>
 <script>
 (function () {
 'use strict';
-const SC = window.SC, FENCE = window.FENCE;
+const SC = window.SC, FENCE = window.FENCE, SYM = window.SYM;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -1093,12 +1447,39 @@ const GAMES = {
       '선이 안 들어갈 자리는 "✕ 표시"를 켜고 누르거나, 길게 눌러 ✕로 표시할 수 있어요.',
     ],
   },
+  sym: {
+    id: 'sym', name: '대칭 퍼즐', hash: 's',
+    puzzle: (s) => SYM.puzzle(s), makeSeed: (lv) => SYM.makeSeed(lv),
+    levels: [
+      { v: 1, name: '쉬움', sub: '조각 2개', stars: '★' },
+      { v: 2, name: '보통', sub: '조각 2~3개', stars: '★★' },
+      { v: 3, name: '어려움', sub: '조각 3개', stars: '★★★' },
+    ],
+    levelLabel: '난이도', defaultLevel: 1,
+    tierOf: (p) => p.tier,
+    validSeed: (v) => SYM.validSeed(v),
+    roundMs: (p) => [0, 180000, 300000, 420000][(p && p.tier) || 2],
+    blurb: '조각 2~3개를 돌리고 뒤집어 붙여서 선대칭 도형을 만드세요.',
+    rules: [
+      '조각 2~3개가 주어져요. 조각끼리 모양이 같을 수도, 다를 수도 있어요.',
+      '모든 조각을 겹치지 않게 붙여 하나의 도형을 만들어요. 조각은 변끼리 맞닿아야 해요.',
+      '완성된 도형이 선대칭(가로·세로·45° 대각선 축)이면 성공이에요.',
+      '꽉 찬 도형이어도, 가운데 구멍이 있는 도형이어도 괜찮아요. 정해진 정답 모양은 없어요.',
+    ],
+    tips: [
+      '조각을 끌어서 옮기고, 선택한 조각을 한 번 더 누르면 돌아가요.',
+      '아래 버튼으로 돌리기·뒤집기를 할 수 있어요.',
+    ],
+  },
 };
+const BOARD_GAMES = ['fence', 'sym']; // 직접 판을 완성하는 게임 (라운드 끝에 결과 비교)
 // 한 게임 전용 페이지(예: /code/)면 그 게임만 고를 수 있게 한다
 const ONLY_GAME = 'code';
+// 링크마다 공개한 게임 목록 (예: 기본 Games 링크는 확정된 게임만, /puzzle/은 새 게임까지)
+const BUILD_GAMES = /*__GAMES__*/null;
+const PICKABLE = ONLY_GAME ? [ONLY_GAME] : (BUILD_GAMES || Object.keys(GAMES)).filter((g) => GAMES[g]);
 let homeGame = ONLY_GAME || store.get('homeGame', 'code');
-if (!GAMES[homeGame]) homeGame = 'code';
-const PICKABLE = ONLY_GAME ? [ONLY_GAME] : Object.keys(GAMES);
+if (!PICKABLE.includes(homeGame)) homeGame = PICKABLE[0];
 let curGame = 'code'; // 지금 판에 올라온 게임
 
 // ---------- 도형 SVG ----------
@@ -1116,15 +1497,18 @@ function show(view) {
   ['viewHome', 'viewRooms', 'viewLobby', 'viewGame'].forEach((v) => ($(v).hidden = v !== view));
   $('btnHome').hidden = view === 'viewHome';
   $('btnToLobby').hidden = !(view === 'viewGame' && net && net.isHost);
+  $('btnChat').hidden = !(net && (view === 'viewLobby' || view === 'viewGame'));
+  if ($('btnChat').hidden) chatClose();
   document.body.classList.toggle('playing', view === 'viewGame');
   if (view === 'viewGame') requestAnimationFrame(fitBoard);
 }
 function setMode(game) {
   curGame = game;
   const isCode = game === 'code';
-  $('codeBoard').hidden = !isCode; $('fenceBoard').hidden = isCode;
-  $('codeCtl').hidden = !isCode; $('fenceCtl').hidden = isCode;
+  $('codeBoard').hidden = !isCode; $('fenceBoard').hidden = game !== 'fence'; $('symBoard').hidden = game !== 'sym';
+  $('codeCtl').hidden = !isCode; $('fenceCtl').hidden = game !== 'fence'; $('symCtl').hidden = game !== 'sym';
   $('btnClearMemo').hidden = !isCode;
+  $('board').classList.remove('lit');
 }
 
 // 판을 남은 공간에 꼭 맞게
@@ -1139,6 +1523,10 @@ function fitBoard() {
     const cw = Math.max(26, Math.min((w - gap * 5) / 6, ((h - gap * 4) / 5) * (5 / 7)));
     grid.style.gap = gap + 'px';
     grid.style.width = Math.floor(cw * 6 + gap * 5) + 'px';
+  } else if (curGame === 'sym') {
+    const area = $('symArea'), svg = $('symSvg');
+    const s = Math.floor(Math.min(area.clientWidth, area.clientHeight));
+    if (s > 0) { svg.style.width = s + 'px'; svg.style.height = s + 'px'; }
   } else {
     const area = $('fenceArea'), svg = $('fenceSvg');
     const s = Math.floor(Math.min(area.clientWidth, area.clientHeight) * (fenceZoom ? 2 : 1));
@@ -1146,7 +1534,7 @@ function fitBoard() {
   }
 }
 window.addEventListener('resize', fitBoard);
-if (window.ResizeObserver) { const ro = new ResizeObserver(() => fitBoard()); ro.observe($('cardsArea')); ro.observe($('fenceArea')); }
+if (window.ResizeObserver) { const ro = new ResizeObserver(() => fitBoard()); ro.observe($('cardsArea')); ro.observe($('fenceArea')); ro.observe($('symArea')); }
 
 let toastT;
 function toast(text, kind) {
@@ -1397,6 +1785,225 @@ $('btnClearFence').addEventListener('click', () => {
   fence.on.clear(); fence.x.clear(); fence.hist = []; drawFence();
 });
 
+
+// =====================================================
+// 대칭 퍼즐 판
+// =====================================================
+const SU = 100, SPAD = 24; // SVG 좌표: 칸 한 변 100
+const SYM_COLORS = ['#7b6fd6', '#1f9e78', '#d8673a'];
+let sym = null; // { p, pl: [[r,f,dx,dy]...], order: [조각 index, 위가 마지막], sel, frozen, onSolved, solved }
+function renderSym(p, extra, onSolved) {
+  setMode('sym');
+  sym = { p, pl: p.start.map((x) => x.slice()), order: p.pieces.map((_, i) => i), sel: -1, frozen: false, onSolved, solved: null };
+  const W = p.N * SU + SPAD * 2;
+  $('symSvg').setAttribute('viewBox', `0 0 ${W} ${W}`);
+  setMeta(p, extra);
+  drawSym();
+  requestAnimationFrame(fitBoard);
+}
+const symShape = (i, pl) => SYM.shift(SYM.orient(sym.p.pieces[i], pl[0], pl[1]), pl[2], pl[3]);
+// 조각 바깥선: 같은 조각 안에서 한 번만 나오는 삼각형 변
+function pieceOutline(set) {
+  const cnt = new Map();
+  for (const k of set) {
+    const c = SYM.corners(SYM.decode(k));
+    for (let j = 0; j < 3; j++) {
+      const a = c[j], b = c[(j + 1) % 3];
+      const id = [a, b].map((q) => q[0] * 2 + ',' + q[1] * 2).sort().join('|');
+      const e = cnt.get(id); if (e) e.n++; else cnt.set(id, { n: 1, a, b });
+    }
+  }
+  return [...cnt.values()].filter((e) => e.n === 1);
+}
+function symPiecesSvg(p, pls, opts) {
+  const o = opts || {}, U = o.U || SU, P = o.P == null ? SPAD : o.P;
+  const X = (v) => P + v * U;
+  const parts = [];
+  const order = o.order || pls.map((_, i) => i);
+  for (const i of order) {
+    const set = SYM.shift(SYM.orient(p.pieces[i], pls[i][0], pls[i][1]), pls[i][2], pls[i][3]);
+    const col = o.color || SYM_COLORS[i % SYM_COLORS.length];
+    const polys = set.map((k) => `<polygon points="${SYM.corners(SYM.decode(k)).map(([x, y]) => X(x) + ',' + X(y)).join(' ')}"/>`).join('');
+    const edges = pieceOutline(set).map((e) => `M${X(e.a[0])} ${X(e.a[1])}L${X(e.b[0])} ${X(e.b[1])}`).join('');
+    parts.push(`<g class="s-piece${o.sel === i ? ' sel' : ''}" data-i="${i}" style="--pc:${col}"><g class="s-fill">${polys}</g><path class="s-edge" d="${edges}"/></g>`);
+  }
+  return parts.join('');
+}
+function axisSvg(axes, N, U, P) {
+  const X = (v) => P + v * U, L = X(0) - P / 2, Rr = X(N) + P / 2;
+  return axes.map((a) => {
+    const c = a.c / 6; // 6배 좌표 → 칸 단위
+    if (a.type === 'v') return `<line x1="${X(c)}" y1="${L}" x2="${X(c)}" y2="${Rr}" class="s-axis"/>`;
+    if (a.type === 'h') return `<line x1="${L}" y1="${X(c)}" x2="${Rr}" y2="${X(c)}" class="s-axis"/>`;
+    if (a.type === 'd') return `<line x1="${X(-1)}" y1="${X(-1 + c)}" x2="${X(N + 1)}" y2="${X(N + 1 + c)}" class="s-axis"/>`;
+    return `<line x1="${X(-1)}" y1="${X(c + 1)}" x2="${X(N + 1)}" y2="${X(c - N - 1)}" class="s-axis"/>`;
+  }).join('');
+}
+function drawSym(showPl) {
+  if (!sym) return;
+  const p = sym.p, N = p.N, W = N * SU + SPAD * 2;
+  const pls = showPl || sym.pl;
+  const parts = [`<rect x="0" y="0" width="${W}" height="${W}" rx="18" class="s-bg"/>`];
+  let grid = '';
+  for (let i = 0; i <= N; i++) grid += `M${SPAD + i * SU} ${SPAD}V${SPAD + N * SU}M${SPAD} ${SPAD + i * SU}H${SPAD + N * SU}`;
+  parts.push(`<path d="${grid}" class="s-grid"/>`);
+  parts.push(`<defs><clipPath id="symClip"><rect x="0" y="0" width="${W}" height="${W}" rx="18"/></clipPath></defs>`);
+  parts.push(symPiecesSvg(p, pls, { order: showPl ? undefined : sym.order, sel: showPl ? -1 : sym.sel }));
+  // 겹친 자리 표시
+  if (!showPl) {
+    const seen = new Map(); let over = '';
+    sym.pl.forEach((pl, i) => { for (const k of symShape(i, pl)) { if (seen.has(k)) over += `<polygon points="${SYM.corners(SYM.decode(k)).map(([x, y]) => (SPAD + x * SU) + ',' + (SPAD + y * SU)).join(' ')}" class="s-over"/>`; else seen.set(k, i); } });
+    parts.push(over);
+  }
+  const ev = SYM.evaluate(p, pls);
+  if (ev.ok) parts.push(`<g clip-path="url(#symClip)">${axisSvg(ev.axes, N, SU, SPAD)}</g>`);
+  $('symSvg').innerHTML = parts.join('');
+  if (!showPl) $('symCap').textContent = ev.ok ? '대칭 완성!' : ev.why === 'overlap' ? '조각이 겹쳐 있어요' : ev.why === 'apart' ? '조각을 모두 붙여 한 덩어리로 만드세요' : '붙어는 있지만 아직 대칭이 아니에요';
+  $('btnRot').disabled = $('btnFlip').disabled = sym.frozen || sym.sel < 0;
+}
+// 화면 좌표 → 칸 단위 좌표
+function symPoint(e) {
+  const svg = $('symSvg'), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const m = svg.getScreenCTM(); if (!m) return null;
+  const q = pt.matrixTransform(m.inverse());
+  return { x: (q.x - SPAD) / SU, y: (q.y - SPAD) / SU };
+}
+function triAt(fx, fy) {
+  const x = Math.floor(fx), y = Math.floor(fy), u = fx - x, v = fy - y;
+  const d = v < u && v < 1 - u ? 0 : u > v && u > 1 - v ? 1 : v > u && v > 1 - u ? 2 : 3;
+  return SYM.tri(x, y, d);
+}
+function pieceAt(pt) {
+  const k = triAt(pt.x, pt.y);
+  for (let j = sym.order.length - 1; j >= 0; j--) { const i = sym.order[j]; if (symShape(i, sym.pl[i]).includes(k)) return i; }
+  // 손가락이 살짝 빗나가도 집히도록 가까운 조각
+  let best = -1, bd = 0.35;
+  for (let j = sym.order.length - 1; j >= 0; j--) {
+    const i = sym.order[j];
+    for (const t of symShape(i, sym.pl[i]).map(SYM.decode)) { const c = SYM.corners(t)[2], d = Math.hypot(c[0] - pt.x, c[1] - pt.y) - 0.5; if (d < bd) { bd = d; best = i; } }
+  }
+  return best;
+}
+// 판 안으로 들어오게 위치 보정
+function clampPl(i, pl) {
+  const b = SYM.bbox(SYM.orient(sym.p.pieces[i], pl[0], pl[1])), N = sym.p.N;
+  pl[2] = Math.max(0, Math.min(N - b.w, pl[2])); pl[3] = Math.max(0, Math.min(N - b.h, pl[3]));
+  return pl;
+}
+function symChanged() {
+  drawSym();
+  const ev = SYM.evaluate(sym.p, sym.pl);
+  if (ev.ok && sym.onSolved && !sym.frozen) sym.onSolved(sym.pl.map((x) => x.slice()));
+}
+function symSelect(i) {
+  sym.sel = i;
+  if (i >= 0) { sym.order = sym.order.filter((x) => x !== i); sym.order.push(i); }
+}
+// 돌리기·뒤집기: 조각의 가운데를 기준으로
+function symTransform(i, kind) {
+  const pl = sym.pl[i], b0 = SYM.bbox(SYM.orient(sym.p.pieces[i], pl[0], pl[1]));
+  const cx = pl[2] + b0.w / 2, cy = pl[3] + b0.h / 2;
+  let r = pl[0], f = pl[1];
+  if (kind === 'rot') r = (r + 1) % 4; else { r = (4 - r) % 4; f = 1 - f; }
+  const b1 = SYM.bbox(SYM.orient(sym.p.pieces[i], r, f));
+  sym.pl[i] = clampPl(i, [r, f, Math.round(cx - b1.w / 2), Math.round(cy - b1.h / 2)]);
+  symChanged();
+}
+let symDrag = null;
+$('symSvg').addEventListener('pointerdown', (e) => {
+  if (!sym || sym.frozen) return;
+  const pt = symPoint(e); if (!pt) return;
+  const i = pieceAt(pt);
+  if (i < 0) { sym.sel = -1; drawSym(); return; }
+  const wasSel = sym.sel === i;
+  symSelect(i);
+  symDrag = { i, x: pt.x, y: pt.y, dx: sym.pl[i][2], dy: sym.pl[i][3], moved: false, wasSel, id: e.pointerId };
+  try { $('symSvg').setPointerCapture(e.pointerId); } catch (er) { /* 무시 */ }
+  drawSym();
+  e.preventDefault();
+});
+$('symSvg').addEventListener('pointermove', (e) => {
+  if (!symDrag || !sym || sym.frozen) return;
+  const pt = symPoint(e); if (!pt) return;
+  const ddx = Math.round(pt.x - symDrag.x), ddy = Math.round(pt.y - symDrag.y);
+  const pl = sym.pl[symDrag.i];
+  const nx = symDrag.dx + ddx, ny = symDrag.dy + ddy;
+  if (Math.abs(pt.x - symDrag.x) > 0.3 || Math.abs(pt.y - symDrag.y) > 0.3) symDrag.moved = true;
+  const c = clampPl(symDrag.i, [pl[0], pl[1], nx, ny]);
+  if (c[2] !== pl[2] || c[3] !== pl[3]) { sym.pl[symDrag.i] = c; drawSym(); }
+});
+function symDragEnd() {
+  if (!symDrag || !sym) { symDrag = null; return; }
+  const d = symDrag; symDrag = null;
+  if (!d.moved && d.wasSel && !sym.frozen) { symTransform(d.i, 'rot'); return; } // 선택된 조각을 한 번 더 누르면 회전
+  symChanged();
+}
+['pointerup', 'pointercancel'].forEach((t) => $('symSvg').addEventListener(t, symDragEnd));
+$('symSvg').addEventListener('contextmenu', (e) => e.preventDefault());
+$('btnRot').addEventListener('click', () => { if (sym && !sym.frozen && sym.sel >= 0) symTransform(sym.sel, 'rot'); });
+$('btnFlip').addEventListener('click', () => { if (sym && !sym.frozen && sym.sel >= 0) symTransform(sym.sel, 'flip'); });
+$('btnSymReset').addEventListener('click', () => {
+  if (!sym || sym.frozen) return;
+  sym.pl = sym.p.start.map((x) => x.slice()); sym.sel = -1; drawSym();
+});
+const plToStr = (pl) => pl.map((x) => x.join(',')).join(';');
+const strToPl = (s, n) => {
+  const a = String(s || '').split(';').map((x) => x.split(',').map(Number));
+  return a.length === n && a.every((x) => x.length === 4 && x.every((v) => Number.isInteger(v) && Math.abs(v) < 100)) ? a : null;
+};
+
+// ---------- 방 채팅 (저장하지 않음: 방장 상태에만 최근 40개, 방이 닫히면 사라짐) ----------
+let chatInit = false, chatSeen = 0, chatLast = 0, chatOpen = false, chatPeekT = 0, chatSentAt = 0;
+function chatMsgs(c) { return Array.isArray(c) ? c : Object.values(c || {}); }
+function chatRender(list) {
+  const el = $('chatList');
+  el.innerHTML = list.length ? list.map((x) => `<li class="${x.c === myCid ? 'me' : ''}">${x.c === myCid ? '' : `<b>${esc(x.n)}</b>`}${esc(x.m)}</li>`).join('')
+    : '<li class="sys">아직 메시지가 없어요. 먼저 인사해 보세요!</li>';
+  el.scrollTop = el.scrollHeight;
+}
+function chatBadge() {
+  const n = chatLast - chatSeen, b = $('chatBadge');
+  b.hidden = chatOpen || n <= 0; b.textContent = n > 9 ? '9+' : String(n);
+}
+function chatUpdate(c) {
+  const list = chatMsgs(c).sort((a, b) => a.i - b.i);
+  const top = list.length ? list[list.length - 1].i : 0;
+  if (!chatInit) { chatInit = true; chatSeen = chatLast = top; } // 들어오기 전 메시지는 읽은 것으로
+  if (top <= chatLast && !chatOpen) { chatBadge(); return; }
+  const fresh = list.filter((x) => x.i > chatLast && x.c !== myCid);
+  chatLast = top;
+  if (chatOpen) { chatSeen = top; chatRender(list); }
+  else {
+    if (!fresh.length) chatSeen = top; // 내가 보낸 것만 새로 왔으면 배지 없음
+    const last = fresh[fresh.length - 1];
+    if (last) {
+      const pk = $('chatPeek'); pk.innerHTML = `<b>${esc(last.n)}</b>${esc(last.m)}`; pk.hidden = false;
+      clearTimeout(chatPeekT); chatPeekT = setTimeout(() => (pk.hidden = true), 3500);
+    }
+  }
+  chatBadge();
+}
+function chatOpenPanel() {
+  chatOpen = true; $('chatPanel').hidden = false; $('chatPeek').hidden = true; chatSeen = chatLast;
+  chatRender(chatMsgs(lastState && lastState.chat).sort((a, b) => a.i - b.i)); chatBadge();
+  if (!matchMedia('(pointer: coarse)').matches) $('chatInput').focus();
+}
+function chatClose() { chatOpen = false; $('chatPanel').hidden = true; chatBadge(); }
+function chatReset() {
+  chatInit = false; chatSeen = 0; chatLast = 0; chatClose(); $('chatList').innerHTML = ''; $('chatPeek').hidden = true; $('chatInput').value = '';
+}
+$('btnChat').addEventListener('click', () => (chatOpen ? chatClose() : chatOpenPanel()));
+$('btnChatClose').addEventListener('click', chatClose);
+$('chatPeek').addEventListener('click', chatOpenPanel);
+$('chatForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const m = $('chatInput').value.replace(/\s+/g, ' ').trim().slice(0, 100);
+  if (!m || !net) return;
+  if (Date.now() - chatSentAt < 450) return; chatSentAt = Date.now();
+  sendOrHandle({ t: 'chat', cid: myCid, m });
+  $('chatInput').value = '';
+});
+
 // ---------- 공통 타이머 루프 ----------
 let tickers = [];
 setInterval(() => {
@@ -1423,6 +2030,9 @@ function startSolo(game, seed) {
     renderCode(p, extra);
     $('buzzer').disabled = false; $('buzzNote').hidden = false;
     $('statusLine').textContent = '찾았다면 버저!';
+  } else if (game === 'sym') {
+    renderSym(p, extra, () => soloFinish());
+    $('statusLine').textContent = '';
   } else {
     renderFence(p, extra, () => soloFinish());
     $('statusLine').textContent = '';
@@ -1460,8 +2070,9 @@ function soloFinish(code) {
   if (!solo || solo.done) return;
   solo.done = true;
   const game = solo.game, G = GAMES[game];
-  const p = game === 'code' ? puzzle : fence.p;
+  const p = game === 'code' ? puzzle : game === 'sym' ? sym.p : fence.p;
   if (game === 'fence') { fence.frozen = true; $('board').classList.add('lit'); }
+  if (game === 'sym') { sym.frozen = true; sym.sel = -1; drawSym(); $('board').classList.add('lit'); }
   const ms = Date.now() - solo.start + solo.penalty;
   $('timer').firstChild.nodeValue = fmt(ms);
   const key = `best-${game}-${solo.seed}`, best = store.get(key, null);
@@ -1481,7 +2092,7 @@ function soloFinish(code) {
   const myRow = best == null ? `<div class="rec-row"><span>내 최고기록</span><span><span class="tag">첫 기록!</span></span></div>`
     : isBest ? `<div class="rec-row"><span>내 최고기록 <span class="sub">이전 ${fmt(best)}</span></span><span><span class="tag">새 기록!${sec(best) > sec(ms) ? ` ${gap(ms, best)} 단축` : ''}</span></span></div>`
     : `<div class="rec-row"><span>내 최고기록 <b>${fmt(best)}</b></span><span class="sub">${diff(ms, best)}</span></div>`;
-  setTimeout(() => modal(`<h2>${game === 'code' ? `정답! ${esc(code)}` : '울타리 완성!'}</h2>
+  setTimeout(() => modal(`<h2>${game === 'code' ? `정답! ${esc(code)}` : game === 'sym' ? '대칭 완성!' : '울타리 완성!'}</h2>
     <div class="result-big">${fmt(ms)}</div>
     <p class="note" style="text-align:center">${solo.wrong ? `오답 ${solo.wrong}번 (+${solo.wrong * 30}초) 포함` : game === 'code' ? '오답 없이 맞혔어요' : label}</p>
     <div class="rec-table">${myRow}<div class="rec-row" id="mWorld"><span>이 문제 1위</span><span class="sub">불러오는 중…</span></div></div>${name === '플레이어' ? '<p class="note" id="mNameHint" style="margin:0">기록 이름은 첫 화면의 이름 칸에서 정할 수 있어요.</p>' : ''}
@@ -1522,7 +2133,7 @@ function soloFinish(code) {
       } else w.innerHTML = `<span>이 문제 1위 <b>${esc(r.prev.n)} ${fmt(r.prev.t)}</b></span><span class="sub">${diff(ms, r.prev.t)}</span>`;
     });
     el.querySelector('#mNext').onclick = () => { closeModal(); startSolo(game, G.makeSeed(nextLv)); };
-  }), game === 'fence' ? 500 : 0);
+  }), BOARD_GAMES.includes(game) ? 700 : 0);
 }
 
 // =====================================================
@@ -1707,6 +2318,7 @@ function netError(text) { $('netErr').textContent = text; $('roomsErr').textCont
 function leaveNet() {
   if (net) { try { if (!net.isHost) net.send({ t: 'leave', cid: myCid }); } catch (e) { /* 무시 */ } net.close(); }
   net = null; host = null; lastState = null; lastSeed = null; clearInterval(hostLoop); clearInterval(resendT);
+  chatReset();
   if ($('cmp')) hideCompare();
 }
 function myName() {
@@ -1721,9 +2333,10 @@ function hostState() {
   return {
     phase: host.phase, game: host.game, games: host.games, levels: host.levels, target: host.target, level: host.curLevel || 0, round: host.round, seed: host.seed, hostCid: myCid,
     history: host.phase === 'over' ? host.history : null,
+    chat: host.chat && host.chat.length ? host.chat : null,
     players: host.players.map((p) => ({ cid: p.cid, name: p.name, score: p.score })),
     locked: host.locked, event: host.event, reveal: host.reveal,
-    boards: host.phase === 'reveal' && host.game === 'fence' ? Object.entries(host.boards || {}).map(([cid, e]) => ({ cid, e: e || '-' })) : null,
+    boards: host.phase === 'reveal' && BOARD_GAMES.includes(host.game) ? Object.entries(host.boards || {}).map(([cid, e]) => ({ cid, e: e || '-' })) : null,
     buzz: host.buzz ? { cid: host.buzz.cid, remain: host.buzz.end - now } : null,
     roundRemain: host.roundEnd ? host.roundEnd - now : null,
     cdRemain: host.cdEnd ? host.cdEnd - now : null,
@@ -1754,9 +2367,10 @@ function hostOnMsg(m) {
     hostRemove(m.cid);
   } else if (m.t === 'board') {
     // 라운드가 끝났을 때 각자 그린 울타리 (결과 비교용)
-    if (host.game !== 'fence' || host.phase !== 'reveal' || !host.players.some((p) => p.cid === m.cid)) return;
+    if (!BOARD_GAMES.includes(host.game) || host.phase !== 'reveal' || !host.players.some((p) => p.cid === m.cid)) return;
     if (host.reveal && host.reveal.winner === m.cid && host.boards[m.cid]) return;
-    host.boards[m.cid] = String(m.edges || '').split(',').filter((x) => /^\d+$/.test(x)).slice(0, 2000).join(',');
+    if (host.game === 'sym') { const pl = strToPl(m.pl, hostPuzzle().pieces.length); host.boards[m.cid] = pl ? plToStr(pl) : '-'; }
+    else host.boards[m.cid] = String(m.edges || '').split(',').filter((x) => /^\d+$/.test(x)).slice(0, 2000).join(',');
     hostPush();
   } else if (m.t === 'buzz') {
     if (host.game !== 'code' || host.phase !== 'play' || host.buzz || host.locked.includes(m.cid) || !host.players.find((p) => p.cid === m.cid)) return;
@@ -1765,7 +2379,26 @@ function hostOnMsg(m) {
   } else if (m.t === 'answer') {
     if (host.game !== 'code' || host.phase !== 'play' || !host.buzz || host.buzz.cid !== m.cid) return;
     hostJudge(m.cid, String(m.code || ''));
+  } else if (m.t === 'chat') {
+    const p = host.players.find((x) => x.cid === m.cid); if (!p) return;
+    const text = String(m.m || '').replace(/\s+/g, ' ').trim().slice(0, 100); if (!text) return;
+    const now = Date.now(); host.chatAt = host.chatAt || {};
+    if (now - (host.chatAt[m.cid] || 0) < 400) return; host.chatAt[m.cid] = now;
+    host.chatN = (host.chatN || 0) + 1;
+    host.chat = (host.chat || []).concat({ i: host.chatN, c: m.cid, n: p.name, m: text }).slice(-40);
+    hostPush();
+  } else if (m.t === 'solved' && host.game === 'sym') {
+    if (host.phase !== 'play') return;
+    const p = host.players.find((x) => x.cid === m.cid); if (!p) return;
+    const pl = strToPl(m.pl, hostPuzzle().pieces.length);
+    if (!pl || !SYM.check(hostPuzzle(), pl)) return;
+    p.score++; hostRecord(p);
+    host.phase = 'reveal'; host.reveal = { winner: m.cid }; host.revealEnd = revealUntil(); host.roundEnd = null;
+    host.boards[m.cid] = plToStr(pl);
+    hostEvent('good', `${p.name} 대칭 완성!`);
+    hostPush();
   } else if (m.t === 'solved') {
+    if (host.game !== 'fence') return;
     if (m.edges && !Array.isArray(m.edges)) m.edges = Object.values(m.edges);
     if (host.game !== 'fence' || host.phase !== 'play' || !Array.isArray(m.edges)) return;
     const p = host.players.find((x) => x.cid === m.cid); if (!p) return;
@@ -1837,7 +2470,7 @@ function hostTick() {
   } else if (host.phase === 'reveal' && now >= host.revealEnd) hostAfterReveal();
 }
 // 울타리 치기는 결과 비교 화면에서 방장이 '다음으로'를 눌러야 넘어간다
-function revealUntil() { return host.game === 'fence' ? Infinity : Date.now() + 5000; }
+function revealUntil() { return BOARD_GAMES.includes(host.game) ? Infinity : Date.now() + 5000; }
 function hostAfterReveal() {
   if (!host || host.phase !== 'reveal') return;
   if (host.players.some((p) => p.score >= host.target)) { host.phase = 'over'; hostPush(); }
@@ -1890,6 +2523,11 @@ async function joinRoom(code) {
       const db = await firebaseDb();
       const info = (await db.ref('lobby/' + code).get()).val();
       if (!info) throw new Error('no-host');
+      const missing = (Array.isArray(info.games) ? info.games : Object.values(info.games || {}).length ? Object.values(info.games) : [info.game]).filter((g) => !PICKABLE.includes(g));
+      if (missing.length) {
+        const nm = missing.map((g) => (GAMES[g] ? GAMES[g].name : '새 게임')).join(', ');
+        netError(`이 방은 ${nm}이(가) 들어 있어 이 링크에서는 들어갈 수 없어요. 방장과 같은 링크로 접속해 주세요.`); return;
+      }
       if (info.locked) {
         const pw = await askPassword(info.name);
         if (pw == null) return;
@@ -1976,7 +2614,7 @@ async function openRoomList() {
     const q = db.ref('lobby').orderByChild('updatedAt').limitToLast(50);
     const cb = (snap) => {
       const rooms = [];
-      snap.forEach((c) => { const v = c.val(); if (v && v.v === 2 && fbNow() - (v.updatedAt || 0) < 120000 && roomGames(v).every((g) => PICKABLE.includes(g))) rooms.push({ code: c.key, ...v }); });
+      snap.forEach((c) => { const v = c.val(); if (v && fbNow() - (v.updatedAt || 0) < 120000 && roomGames(v).every((g) => PICKABLE.includes(g))) rooms.push({ code: c.key, ...v }); });
       rooms.sort((a, b) => (a.phase === 'lobby' ? 0 : 1) - (b.phase === 'lobby' ? 0 : 1) || (b.createdAt || 0) - (a.createdAt || 0));
       list.innerHTML = rooms.length ? rooms.map((r) => {
         const playing = r.phase !== 'lobby', full = (r.players || 0) >= 6;
@@ -2002,6 +2640,7 @@ function onState(s) {
   s.locked = Array.isArray(s.locked) ? s.locked : Object.values(s.locked || {});
   const prev = lastState; lastState = s; stateAt = Date.now();
   if (!net || !GAMES[s.game]) return;
+  chatUpdate(s.chat);
   if (s.event && s.event.id > lastEventId) {
     if (prev) toast(s.event.text, s.event.kind === 'good' ? 'good' : s.event.kind === 'bad' ? 'bad' : '');
     lastEventId = s.event.id;
@@ -2015,20 +2654,28 @@ function onState(s) {
     lastSeed = s.seed;
     const p = GAMES[s.game].puzzle(s.seed), extra = `<span class="chip">R${s.round} · ${s.target}승 선승</span>`;
     if (s.game === 'code') { renderCode(p, extra); $('buzzNote').hidden = true; }
+    else if (s.game === 'sym') renderSym(p, extra, (pl) => { sendOrHandle({ t: 'solved', cid: myCid, pl: plToStr(pl) }); });
     else renderFence(p, extra, (edges) => { sendOrHandle({ t: 'solved', cid: myCid, edges }); });
   }
   show('viewGame');
   renderScores(s);
   if (s.reveal && (!prev || !prev.reveal)) {
     if (s.game === 'code') revealCode(s.reveal.answer);
-    else if (fence) {
+    else if (s.game === 'sym' && sym) {
+      sym.frozen = true; sym.sel = -1; $('board').classList.add('lit');
+      // 내가 만든 배치를 방장에게 보내 결과 비교 화면에 올린다
+      if (s.reveal.winner !== myCid) sendOrHandle({ t: 'board', cid: myCid, pl: plToStr(sym.pl) });
+      drawSym();
+    } else if (s.game === 'fence' && fence) {
       fence.frozen = true; $('board').classList.add('lit');
       if (s.reveal.winner !== myCid) drawFence(fence.p.solution);
       // 내가 그린 울타리를 방장에게 보내 결과 비교 화면에 올린다
       if (s.reveal.winner !== myCid) sendOrHandle({ t: 'board', cid: myCid, edges: [...fence.on].join(',') });
     }
   }
-  if (s.game === 'fence' && s.phase === 'reveal') showCompare(s); else hideCompare();
+  // 방장은 위에서 보낸 내 판이 바로 반영된 최신 상태(lastState)로 그린다
+  if (lastState !== s) return;
+  if (BOARD_GAMES.includes(s.game) && s.phase === 'reveal') showCompare(s); else hideCompare();
   if (s.game === 'code') {
     if (s.buzz && s.buzz.cid === myCid && !sheet) openSheet(Date.now() + s.buzz.remain, (code) => sendOrHandle({ t: 'answer', cid: myCid, code }));
     if ((!s.buzz || s.buzz.cid !== myCid) && sheet) closeSheet();
@@ -2133,7 +2780,40 @@ function miniFence(p, edges, kind) {
   for (let r = 0; r <= p.R; r++) for (let c = 0; c <= p.C; c++) parts.push(`<circle cx="${X(c)}" cy="${Y(r)}" r="9" class="f-dot"/>`);
   return `<svg viewBox="0 0 ${p.C * U + PAD * 2} ${p.R * U + PAD * 2}" class="mini-fence" aria-hidden="true">${parts.join('')}</svg>`;
 }
+function miniSym(p, pls, win) {
+  const U = 40, P = 10, W = p.N * U + P * 2;
+  const ev = SYM.evaluate(p, pls);
+  return `<svg viewBox="0 0 ${W} ${W}" class="mini-sym${win ? ' win' : ''}" aria-hidden="true"><rect x="0" y="0" width="${W}" height="${W}" rx="10" class="s-bg"/>${symPiecesSvg(p, pls, { U, P })}${ev.ok ? axisSvg(ev.axes, p.N, U, P) : ''}</svg>`;
+}
+function showCompareSym(s) {
+  if (!sym) return;
+  const p = sym.p, boards = {};
+  (Array.isArray(s.boards) ? s.boards : Object.values(s.boards || {})).forEach((b) => { if (b && b.cid) boards[b.cid] = b.e && b.e !== '-' ? strToPl(b.e, p.pieces.length) : null; });
+  const winner = s.reveal && s.players.find((x) => x.cid === s.reveal.winner);
+  const cards = s.players.map((pl) => {
+    const has = Object.prototype.hasOwnProperty.call(boards, pl.cid), e = boards[pl.cid];
+    const isWin = winner && pl.cid === winner.cid;
+    let sub;
+    if (!has) sub = '불러오는 중…';
+    else if (!e) sub = '배치 없음';
+    else { const ev = SYM.evaluate(p, e); sub = isWin || ev.ok ? '대칭 완성!' : ev.why === 'overlap' ? '조각이 겹침' : ev.why === 'apart' ? '조각이 떨어져 있음' : '대칭 아님'; }
+    return `<figure class="cmp-card${isWin ? ' win' : ''}${pl.cid === myCid ? ' me' : ''}">
+      ${e ? miniSym(p, e, isWin) : '<div class="mini-wait"></div>'}
+      <figcaption><b>${isWin ? '🏆 ' : ''}${esc(pl.name)}${pl.cid === myCid ? ' (나)' : ''}</b><span>${sub}</span></figcaption></figure>`;
+  });
+  if (!winner) cards.push(`<figure class="cmp-card answer">${miniSym(p, p.solution, true)}<figcaption><b>정답 예시</b><span>다른 모양도 정답이 될 수 있어요</span></figcaption></figure>`);
+  return { cards, winner };
+}
 function showCompare(s) {
+  if (s.game === 'sym') {
+    const r = showCompareSym(s); if (!r) return;
+    $('cmpTitle').textContent = `라운드 ${s.round} 결과 · ${r.winner ? r.winner.name + ' 완성!' : '시간 종료'}`;
+    $('cmpGrid').innerHTML = r.cards.join('');
+    $('cmpScores').textContent = s.players.map((x) => `${x.name} ${x.score}승`).join(' · ');
+    $('btnCmpNext').hidden = !(net && net.isHost); $('cmpWait').hidden = !!(net && net.isHost);
+    $('cmp').hidden = false;
+    return;
+  }
   if (!fence) return;
   const p = fence.p, sol = new Set(p.solution);
   const boards = {};
@@ -2179,6 +2859,7 @@ function netTicker() {
   let text = '', hot = false;
   if (s.phase === 'play') {
     if (s.game === 'fence') text = '먼저 완성하면 1승!';
+    else if (s.game === 'sym') text = '먼저 대칭을 만들면 1승!';
     else if (s.buzz) {
       const who = s.players.find((p) => p.cid === s.buzz.cid);
       text = s.buzz.cid === myCid ? '코드 입력!' : `${who ? who.name : '누군가'} 답하는 중 ${Math.max(0, Math.ceil((s.buzz.remain - el) / 1000))}초`;
@@ -2186,13 +2867,14 @@ function netTicker() {
     } else text = locked ? '오답 · 이번 라운드 버저 잠김' : '찾았다면 버저!';
   } else if (s.phase === 'reveal') {
     const w = s.reveal && s.players.find((p) => p.cid === s.reveal.winner);
-    if (s.game === 'fence') text = w ? `${w.name} 완성!` : '시간 종료 · 정답 공개';
+    if (BOARD_GAMES.includes(s.game)) text = w ? `${w.name} 완성!` : '시간 종료 · 정답 공개';
     else text = w ? `${w.name} 정답! ${s.reveal.answer}` : `정답 ${s.reveal ? s.reveal.answer : ''}`;
     hot = true;
   } else if (s.phase === 'countdown') text = `라운드 ${s.round} 시작!`;
   st.textContent = text; st.className = 'status' + (hot ? ' hot' : '');
   $('buzzer').disabled = s.phase !== 'play' || !!s.buzz || locked;
   if (fence && s.game === 'fence') fence.frozen = s.phase !== 'play';
+  if (sym && s.game === 'sym' && sym.frozen !== (s.phase !== 'play')) { sym.frozen = s.phase !== 'play'; if (sym.frozen) sym.sel = -1; drawSym(); }
 }
 
 // ---------- 홈 ----------
@@ -2203,6 +2885,8 @@ function renderHome() {
   const box = $('levels');
   box.innerHTML = G.levels.map((l) => `<button class="lv" type="button" data-level="${l.v}">${l.stars ? `<span class="stars">${l.stars}</span>` : ''}<b>${l.name}</b><span class="lv-sub">${l.sub}</span></button>`).join('');
 }
+document.querySelectorAll('.gtab').forEach((b) => { if (!PICKABLE.includes(b.dataset.game)) b.remove(); });
+document.querySelector('.gtabs').style.gridTemplateColumns = `repeat(${Math.max(1, PICKABLE.length)}, 1fr)`;
 document.querySelectorAll('.gtab').forEach((b) => b.addEventListener('click', () => {
   homeGame = b.dataset.game; store.set('homeGame', homeGame); renderHome();
 }));
@@ -2285,7 +2969,7 @@ $('btnCopyInvite').addEventListener('click', () => {
   copy(`🔐 유배지 퍼즐 대결 초대${net.roomName ? ` · ${net.roomName}` : ''}\n코드: ${net.code}` + (SHARE_URL ? `\n${SHARE_URL}` : '') + '\n"방 들어가기"에서 이 방을 고르거나 코드를 입력하세요!');
 });
 $('btnHome').addEventListener('click', () => {
-  closeSheet(); closeModal(); leaveNet(); stopRoomList(); solo = null; fence = null; $('countdown').hidden = true;
+  closeSheet(); closeModal(); leaveNet(); stopRoomList(); solo = null; fence = null; sym = null; $('countdown').hidden = true;
   renderHome(); show('viewHome');
   try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* 무시 */ }
 });
@@ -2303,8 +2987,9 @@ if (ONLY_GAME) {
 }
 $('nameInput').value = store.get('name', '');
 renderHome();
-const m = /^#([pf])-(\d{1,8})$/.exec(location.hash);
-if (m) startSolo(m[1] === 'p' ? 'code' : 'fence', parseInt(m[2], 10)); else show('viewHome');
+const m = /^#([pfs])-(\d{1,8})$/.exec(location.hash);
+const mg = m && Object.keys(GAMES).find((g) => GAMES[g].hash === m[1]);
+if (mg && PICKABLE.includes(mg)) startSolo(mg, parseInt(m[2], 10)); else show('viewHome');
 })();
 
 </script>
