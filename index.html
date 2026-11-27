@@ -67,6 +67,19 @@ body.playing .brand h1 { font-size: 19px; }
 .brand p { margin: 0; color: var(--muted); font-size: 12.5px; }
 .top-actions { display: flex; gap: 6px; flex: none; }
 .top-actions .btn { white-space: nowrap; }
+.chat-btn { position: relative; }
+.chat-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #e0413a; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.chat { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: min(520px, 100vw); height: min(62vh, 460px); z-index: 60; background: var(--slab); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.45), inset 0 0 0 1px #34413f; display: grid; grid-template-rows: auto 1fr auto; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); gap: 8px; }
+.chat-head { display: flex; align-items: center; gap: 8px; } .chat-head .note { margin: 0; flex: 1; font-size: 12px; }
+.chat-list { list-style: none; margin: 0; padding: 4px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; background: var(--stone); border-radius: 10px; }
+.chat-list li { max-width: 85%; align-self: flex-start; background: var(--slab-2); border-radius: 12px 12px 12px 4px; padding: 6px 10px; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.chat-list li.me { align-self: flex-end; background: rgba(217,138,78,.22); border-radius: 12px 12px 4px 12px; }
+.chat-list li b { display: block; font-size: 12px; color: var(--copper); }
+.chat-list li.sys { align-self: center; background: none; color: var(--muted); font-size: 12px; }
+.chat-empty { margin: auto; color: var(--muted); font-size: 13px; }
+.chat-form { display: flex; gap: 6px; } .chat-form input { flex: 1; min-width: 0; font-size: 16px; }
+.chat-peek { position: fixed; top: 56px; right: 10px; z-index: 55; max-width: min(300px, 80vw); background: var(--slab-2); border-radius: 12px; padding: 8px 12px; font-size: 13px; box-shadow: 0 6px 20px rgba(0,0,0,.4); cursor: pointer; overflow-wrap: anywhere; }
+.chat-peek b { color: var(--copper); margin-right: 6px; }
 .btn {
   border: 1px solid #44524f; background: var(--slab); border-radius: 10px;
   padding: 10px 14px; font-weight: 600; transition: background .15s, border-color .15s;
@@ -320,6 +333,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <p>팬 제작 게임 · 데블스 플랜3 유배지 매치에서 영감을 받았어요</p>
     </div>
     <div class="top-actions">
+      <button class="btn ghost sm chat-btn" id="btnChat" type="button" hidden aria-label="채팅 열기">💬<span class="chat-badge" id="chatBadge" hidden></span></button>
       <button class="btn ghost sm" id="btnRules" type="button">규칙</button>
       <button class="btn ghost sm" id="btnToLobby" type="button" hidden title="대기실로 돌아가 게임·난이도·승리 조건을 바꿔요">설정 바꾸기</button>
       <button class="btn ghost sm" id="btnHome" type="button" hidden>처음으로</button>
@@ -477,6 +491,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 </div>
 <div class="modal-bg" id="modal" hidden><div class="modal" id="modalBody" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" hidden></div>
+<div class="chat-peek" id="chatPeek" hidden></div>
+<div class="chat" id="chatPanel" hidden role="dialog" aria-label="채팅">
+  <div class="chat-head"><b>채팅</b><span class="note">방이 닫히면 사라져요</span><button class="btn ghost sm" id="btnChatClose" type="button" aria-label="채팅 닫기">닫기</button></div>
+  <ol class="chat-list" id="chatList"></ol>
+  <form class="chat-form" id="chatForm" autocomplete="off"><input id="chatInput" maxlength="100" placeholder="메시지 입력" enterkeyhint="send"><button class="btn primary" type="submit">보내기</button></form>
+</div>
 
 <script>
 /* 비밀 코드 퍼즐 엔진 — 덱, 조건, 판정, 문제 생성 */
@@ -1455,9 +1475,11 @@ const GAMES = {
 const BOARD_GAMES = ['fence', 'sym']; // 직접 판을 완성하는 게임 (라운드 끝에 결과 비교)
 // 한 게임 전용 페이지(예: /code/)면 그 게임만 고를 수 있게 한다
 const ONLY_GAME = /*__ONLY__*/null;
+// 링크마다 공개한 게임 목록 (예: 기본 Games 링크는 확정된 게임만, /puzzle/은 새 게임까지)
+const BUILD_GAMES = ["code", "fence"];
+const PICKABLE = ONLY_GAME ? [ONLY_GAME] : (BUILD_GAMES || Object.keys(GAMES)).filter((g) => GAMES[g]);
 let homeGame = ONLY_GAME || store.get('homeGame', 'code');
-if (!GAMES[homeGame]) homeGame = 'code';
-const PICKABLE = ONLY_GAME ? [ONLY_GAME] : Object.keys(GAMES);
+if (!PICKABLE.includes(homeGame)) homeGame = PICKABLE[0];
 let curGame = 'code'; // 지금 판에 올라온 게임
 
 // ---------- 도형 SVG ----------
@@ -1475,6 +1497,8 @@ function show(view) {
   ['viewHome', 'viewRooms', 'viewLobby', 'viewGame'].forEach((v) => ($(v).hidden = v !== view));
   $('btnHome').hidden = view === 'viewHome';
   $('btnToLobby').hidden = !(view === 'viewGame' && net && net.isHost);
+  $('btnChat').hidden = !(net && (view === 'viewLobby' || view === 'viewGame'));
+  if ($('btnChat').hidden) chatClose();
   document.body.classList.toggle('playing', view === 'viewGame');
   if (view === 'viewGame') requestAnimationFrame(fitBoard);
 }
@@ -1928,6 +1952,58 @@ const strToPl = (s, n) => {
   return a.length === n && a.every((x) => x.length === 4 && x.every((v) => Number.isInteger(v) && Math.abs(v) < 100)) ? a : null;
 };
 
+// ---------- 방 채팅 (저장하지 않음: 방장 상태에만 최근 40개, 방이 닫히면 사라짐) ----------
+let chatInit = false, chatSeen = 0, chatLast = 0, chatOpen = false, chatPeekT = 0, chatSentAt = 0;
+function chatMsgs(c) { return Array.isArray(c) ? c : Object.values(c || {}); }
+function chatRender(list) {
+  const el = $('chatList');
+  el.innerHTML = list.length ? list.map((x) => `<li class="${x.c === myCid ? 'me' : ''}">${x.c === myCid ? '' : `<b>${esc(x.n)}</b>`}${esc(x.m)}</li>`).join('')
+    : '<li class="sys">아직 메시지가 없어요. 먼저 인사해 보세요!</li>';
+  el.scrollTop = el.scrollHeight;
+}
+function chatBadge() {
+  const n = chatLast - chatSeen, b = $('chatBadge');
+  b.hidden = chatOpen || n <= 0; b.textContent = n > 9 ? '9+' : String(n);
+}
+function chatUpdate(c) {
+  const list = chatMsgs(c).sort((a, b) => a.i - b.i);
+  const top = list.length ? list[list.length - 1].i : 0;
+  if (!chatInit) { chatInit = true; chatSeen = chatLast = top; } // 들어오기 전 메시지는 읽은 것으로
+  if (top <= chatLast && !chatOpen) { chatBadge(); return; }
+  const fresh = list.filter((x) => x.i > chatLast && x.c !== myCid);
+  chatLast = top;
+  if (chatOpen) { chatSeen = top; chatRender(list); }
+  else {
+    if (!fresh.length) chatSeen = top; // 내가 보낸 것만 새로 왔으면 배지 없음
+    const last = fresh[fresh.length - 1];
+    if (last) {
+      const pk = $('chatPeek'); pk.innerHTML = `<b>${esc(last.n)}</b>${esc(last.m)}`; pk.hidden = false;
+      clearTimeout(chatPeekT); chatPeekT = setTimeout(() => (pk.hidden = true), 3500);
+    }
+  }
+  chatBadge();
+}
+function chatOpenPanel() {
+  chatOpen = true; $('chatPanel').hidden = false; $('chatPeek').hidden = true; chatSeen = chatLast;
+  chatRender(chatMsgs(lastState && lastState.chat).sort((a, b) => a.i - b.i)); chatBadge();
+  if (!matchMedia('(pointer: coarse)').matches) $('chatInput').focus();
+}
+function chatClose() { chatOpen = false; $('chatPanel').hidden = true; chatBadge(); }
+function chatReset() {
+  chatInit = false; chatSeen = 0; chatLast = 0; chatClose(); $('chatList').innerHTML = ''; $('chatPeek').hidden = true; $('chatInput').value = '';
+}
+$('btnChat').addEventListener('click', () => (chatOpen ? chatClose() : chatOpenPanel()));
+$('btnChatClose').addEventListener('click', chatClose);
+$('chatPeek').addEventListener('click', chatOpenPanel);
+$('chatForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const m = $('chatInput').value.replace(/\s+/g, ' ').trim().slice(0, 100);
+  if (!m || !net) return;
+  if (Date.now() - chatSentAt < 450) return; chatSentAt = Date.now();
+  sendOrHandle({ t: 'chat', cid: myCid, m });
+  $('chatInput').value = '';
+});
+
 // ---------- 공통 타이머 루프 ----------
 let tickers = [];
 setInterval(() => {
@@ -2242,6 +2318,7 @@ function netError(text) { $('netErr').textContent = text; $('roomsErr').textCont
 function leaveNet() {
   if (net) { try { if (!net.isHost) net.send({ t: 'leave', cid: myCid }); } catch (e) { /* 무시 */ } net.close(); }
   net = null; host = null; lastState = null; lastSeed = null; clearInterval(hostLoop); clearInterval(resendT);
+  chatReset();
   if ($('cmp')) hideCompare();
 }
 function myName() {
@@ -2256,6 +2333,7 @@ function hostState() {
   return {
     phase: host.phase, game: host.game, games: host.games, levels: host.levels, target: host.target, level: host.curLevel || 0, round: host.round, seed: host.seed, hostCid: myCid,
     history: host.phase === 'over' ? host.history : null,
+    chat: host.chat && host.chat.length ? host.chat : null,
     players: host.players.map((p) => ({ cid: p.cid, name: p.name, score: p.score })),
     locked: host.locked, event: host.event, reveal: host.reveal,
     boards: host.phase === 'reveal' && BOARD_GAMES.includes(host.game) ? Object.entries(host.boards || {}).map(([cid, e]) => ({ cid, e: e || '-' })) : null,
@@ -2301,6 +2379,14 @@ function hostOnMsg(m) {
   } else if (m.t === 'answer') {
     if (host.game !== 'code' || host.phase !== 'play' || !host.buzz || host.buzz.cid !== m.cid) return;
     hostJudge(m.cid, String(m.code || ''));
+  } else if (m.t === 'chat') {
+    const p = host.players.find((x) => x.cid === m.cid); if (!p) return;
+    const text = String(m.m || '').replace(/\s+/g, ' ').trim().slice(0, 100); if (!text) return;
+    const now = Date.now(); host.chatAt = host.chatAt || {};
+    if (now - (host.chatAt[m.cid] || 0) < 400) return; host.chatAt[m.cid] = now;
+    host.chatN = (host.chatN || 0) + 1;
+    host.chat = (host.chat || []).concat({ i: host.chatN, c: m.cid, n: p.name, m: text }).slice(-40);
+    hostPush();
   } else if (m.t === 'solved' && host.game === 'sym') {
     if (host.phase !== 'play') return;
     const p = host.players.find((x) => x.cid === m.cid); if (!p) return;
@@ -2312,6 +2398,7 @@ function hostOnMsg(m) {
     hostEvent('good', `${p.name} 대칭 완성!`);
     hostPush();
   } else if (m.t === 'solved') {
+    if (host.game !== 'fence') return;
     if (m.edges && !Array.isArray(m.edges)) m.edges = Object.values(m.edges);
     if (host.game !== 'fence' || host.phase !== 'play' || !Array.isArray(m.edges)) return;
     const p = host.players.find((x) => x.cid === m.cid); if (!p) return;
@@ -2436,6 +2523,11 @@ async function joinRoom(code) {
       const db = await firebaseDb();
       const info = (await db.ref('lobby/' + code).get()).val();
       if (!info) throw new Error('no-host');
+      const missing = (Array.isArray(info.games) ? info.games : Object.values(info.games || {}).length ? Object.values(info.games) : [info.game]).filter((g) => !PICKABLE.includes(g));
+      if (missing.length) {
+        const nm = missing.map((g) => (GAMES[g] ? GAMES[g].name : '새 게임')).join(', ');
+        netError(`이 방은 ${nm}이(가) 들어 있어 이 링크에서는 들어갈 수 없어요. 방장과 같은 링크로 접속해 주세요.`); return;
+      }
       if (info.locked) {
         const pw = await askPassword(info.name);
         if (pw == null) return;
@@ -2548,6 +2640,7 @@ function onState(s) {
   s.locked = Array.isArray(s.locked) ? s.locked : Object.values(s.locked || {});
   const prev = lastState; lastState = s; stateAt = Date.now();
   if (!net || !GAMES[s.game]) return;
+  chatUpdate(s.chat);
   if (s.event && s.event.id > lastEventId) {
     if (prev) toast(s.event.text, s.event.kind === 'good' ? 'good' : s.event.kind === 'bad' ? 'bad' : '');
     lastEventId = s.event.id;
@@ -2792,6 +2885,8 @@ function renderHome() {
   const box = $('levels');
   box.innerHTML = G.levels.map((l) => `<button class="lv" type="button" data-level="${l.v}">${l.stars ? `<span class="stars">${l.stars}</span>` : ''}<b>${l.name}</b><span class="lv-sub">${l.sub}</span></button>`).join('');
 }
+document.querySelectorAll('.gtab').forEach((b) => { if (!PICKABLE.includes(b.dataset.game)) b.remove(); });
+document.querySelector('.gtabs').style.gridTemplateColumns = `repeat(${Math.max(1, PICKABLE.length)}, 1fr)`;
 document.querySelectorAll('.gtab').forEach((b) => b.addEventListener('click', () => {
   homeGame = b.dataset.game; store.set('homeGame', homeGame); renderHome();
 }));
