@@ -58,28 +58,24 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
 body.playing { overflow: hidden; }
 body.playing .wrap { height: 100%; display: flex; flex-direction: column; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
 body.playing .brand p, body.playing footer { display: none; }
-body.playing .brand h1 { font-size: 19px; }
+body.playing .brand { min-width: 0; } body.playing .brand h1 { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 상단 */
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .brand { display: grid; gap: 2px; }
-.brand h1 { font-size: 26px; letter-spacing: .02em; color: var(--copper); }
-.brand p { margin: 0; color: var(--muted); font-size: 12.5px; }
+.brand h1 { font-size: 26px; letter-spacing: .02em; color: var(--copper); word-break: keep-all; }
+.brand p { margin: 0; color: var(--muted); font-size: 12.5px; word-break: keep-all; }
 .top-actions { display: flex; gap: 6px; flex: none; }
 .top-actions .btn { white-space: nowrap; }
-.chat-btn { position: relative; }
-.chat-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #e0413a; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
-.chat { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: min(520px, 100vw); height: min(62vh, 460px); z-index: 60; background: var(--slab); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.45), inset 0 0 0 1px #34413f; display: grid; grid-template-rows: auto 1fr auto; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); gap: 8px; }
-.chat-head { display: flex; align-items: center; gap: 8px; } .chat-head .note { margin: 0; flex: 1; font-size: 12px; }
-.chat-list { list-style: none; margin: 0; padding: 4px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; background: var(--stone); border-radius: 10px; }
-.chat-list li { max-width: 85%; align-self: flex-start; background: var(--slab-2); border-radius: 12px 12px 12px 4px; padding: 6px 10px; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
-.chat-list li.me { align-self: flex-end; background: rgba(217,138,78,.22); border-radius: 12px 12px 4px 12px; }
-.chat-list li b { display: block; font-size: 12px; color: var(--copper); }
-.chat-list li.sys { align-self: center; background: none; color: var(--muted); font-size: 12px; }
-.chat-empty { margin: auto; color: var(--muted); font-size: 13px; }
-.chat-form { display: flex; gap: 6px; } .chat-form input { flex: 1; min-width: 0; font-size: 16px; }
-.chat-peek { position: fixed; top: 56px; right: 10px; z-index: 55; max-width: min(300px, 80vw); background: var(--slab-2); border-radius: 12px; padding: 8px 12px; font-size: 13px; box-shadow: 0 6px 20px rgba(0,0,0,.4); cursor: pointer; overflow-wrap: anywhere; }
-.chat-peek b { color: var(--copper); margin-right: 6px; }
+.chat { background: var(--slab); border-radius: 12px; box-shadow: inset 0 0 0 1px #34413f, 0 -6px 18px rgba(0,0,0,.35); padding: 8px; display: grid; gap: 6px; flex: none; position: sticky; bottom: calc(6px + env(safe-area-inset-bottom)); z-index: 20; }
+.chat-list { list-style: none; margin: 0; padding: 2px 4px; height: 92px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; line-height: 1.35; }
+body.playing .chat { padding: 6px; gap: 4px; position: static; box-shadow: inset 0 0 0 1px #34413f; }
+body.playing .chat-list { height: 54px; font-size: 12.5px; gap: 2px; }
+.chat-list li { overflow-wrap: anywhere; }
+.chat-list li b { color: var(--copper); margin-right: 6px; font-weight: 700; }
+.chat-list li.me b { color: #9fd3b5; }
+.chat-list li.sys { color: var(--muted); }
+.chat-form { display: flex; gap: 6px; } .chat-form input { flex: 1; min-width: 0; font-size: 16px; padding: 7px 10px; }
 .btn {
   border: 1px solid #44524f; background: var(--slab); border-radius: 10px;
   padding: 10px 14px; font-weight: 600; transition: background .15s, border-color .15s;
@@ -304,6 +300,33 @@ body.answering .board { box-shadow: inset 0 0 0 2px var(--copper), 0 12px 30px r
 .modal { width: min(520px, 100%); max-height: 88vh; overflow: auto; background: var(--slab); border-radius: 16px; padding: 20px; display: grid; gap: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
 .modal h2 { font-size: 22px; color: var(--copper); }
 .modal ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.rf-tabs { margin-top: -2px; }
+.rf-title { font-size: 16px; margin: 0; }
+.rf-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.rf-steps > li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; background: var(--stone); border-radius: 12px; padding: 12px; }
+.rf-n { width: 28px; height: 28px; border-radius: 50%; background: var(--copper); color: #1a1412; font-weight: 800; display: grid; place-items: center; font-size: 15px; }
+.rf-body p { margin: 3px 0 0; line-height: 1.5; font-size: 14.5px; word-break: keep-all; }
+.rf-body b { color: var(--copper); }
+.rf-fig { margin-top: 10px; display: grid; gap: 6px; justify-items: start; }
+.rf-cards { display: flex; gap: 7px; flex-wrap: wrap; }
+.rf-cards .card { width: 40px; cursor: default; }
+.rf-cards .card.rf-pick { box-shadow: 0 0 0 2px var(--glow), 0 0 10px 2px rgba(142,240,122,.55); }
+.rf-cond { font-size: 12px; color: var(--muted); }
+.rf-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rf-ok, .rf-no { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; flex: none; }
+.rf-ok { background: rgba(142,240,122,.18); color: #8ef07a; } .rf-no { background: rgba(224,65,58,.2); color: #ff7a72; }
+.rf-code { font-family: var(--font-display); font-weight: 700; letter-spacing: .3em; font-size: 18px; }
+.rf-cap { font-size: 12px; color: var(--muted); }
+.rf-buzz { width: 64px; height: 64px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ff6a5c, #c62218); color: #fff; font-weight: 800; display: grid; place-items: center; box-shadow: 0 4px 0 #7d140e; }
+.rf-svg { display: block; max-width: 100%; height: auto; }
+.rf-svg .rf-dot { fill: #e9e4da; } .rf-svg .rf-line { stroke: var(--copper); stroke-width: 3.2; stroke-linecap: round; }
+.rf-svg .rf-num { fill: #e9e4da; font-size: 14px; font-weight: 700; text-anchor: middle; }
+.rf-svg .rf-q { fill: var(--muted); font-size: 14px; text-anchor: middle; }
+.rf-svg .rf-hl { fill: rgba(217,138,78,.22); }
+.rf-svg .rf-p0 { fill: #d98a4e; stroke: #1a1f1e; stroke-width: 1; } .rf-svg .rf-p1 { fill: #6fb6c9; stroke: #1a1f1e; stroke-width: 1; }
+.rf-svg .rf-axis { stroke: #8ef07a; stroke-width: 2; stroke-dasharray: 5 4; }
+.rf-tips { background: var(--stone); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; }
+.rf-tips ul { margin-top: 6px; }
 .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; margin-right: 4px; vertical-align: 1px; }
 .tag.show { background: rgba(217,138,78,.2); color: var(--copper); }
 .tag.mine { background: rgba(142,240,122,.15); color: var(--glow); }
@@ -333,7 +356,6 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
       <p>팬 제작 게임 · 데블스 플랜3 유배지 매치에서 영감을 받았어요</p>
     </div>
     <div class="top-actions">
-      <button class="btn ghost sm chat-btn" id="btnChat" type="button" hidden aria-label="채팅 열기">💬<span class="chat-badge" id="chatBadge" hidden></span></button>
       <button class="btn ghost sm" id="btnRules" type="button">규칙</button>
       <button class="btn ghost sm" id="btnToLobby" type="button" hidden title="대기실로 돌아가 게임·난이도·승리 조건을 바꿔요">설정 바꾸기</button>
       <button class="btn ghost sm" id="btnHome" type="button" hidden>처음으로</button>
@@ -473,6 +495,11 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
     </div>
   </section>
 
+  <div class="chat" id="chatDock" hidden aria-label="채팅">
+    <ol class="chat-list" id="chatList" aria-live="polite"></ol>
+    <form class="chat-form" id="chatForm" autocomplete="off"><input id="chatInput" maxlength="100" placeholder="채팅 입력 (방이 닫히면 사라져요)" enterkeyhint="send" aria-label="채팅 메시지"><button class="btn primary sm" type="submit">보내기</button></form>
+  </div>
+
   <footer>팬이 만든 비공식 게임이며 방송사·제작사와 관련이 없어요.</footer>
 </div>
 
@@ -491,13 +518,6 @@ footer { color: var(--muted); font-size: 12px; text-align: center; }
 </div>
 <div class="modal-bg" id="modal" hidden><div class="modal" id="modalBody" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" hidden></div>
-<div class="chat-peek" id="chatPeek" hidden></div>
-<div class="chat" id="chatPanel" hidden role="dialog" aria-label="채팅">
-  <div class="chat-head"><b>채팅</b><span class="note">방이 닫히면 사라져요</span><button class="btn ghost sm" id="btnChatClose" type="button" aria-label="채팅 닫기">닫기</button></div>
-  <ol class="chat-list" id="chatList"></ol>
-  <form class="chat-form" id="chatForm" autocomplete="off"><input id="chatInput" maxlength="100" placeholder="메시지 입력" enterkeyhint="send"><button class="btn primary" type="submit">보내기</button></form>
-</div>
-
 <script>
 /* 비밀 코드 퍼즐 엔진 — 덱, 조건, 판정, 문제 생성 */
 (function (root) {
@@ -1497,8 +1517,7 @@ function show(view) {
   ['viewHome', 'viewRooms', 'viewLobby', 'viewGame'].forEach((v) => ($(v).hidden = v !== view));
   $('btnHome').hidden = view === 'viewHome';
   $('btnToLobby').hidden = !(view === 'viewGame' && net && net.isHost);
-  $('btnChat').hidden = !(net && (view === 'viewLobby' || view === 'viewGame'));
-  if ($('btnChat').hidden) chatClose();
+  $('chatDock').hidden = !(net && (view === 'viewLobby' || view === 'viewGame'));
   document.body.classList.toggle('playing', view === 'viewGame');
   if (view === 'viewGame') requestAnimationFrame(fitBoard);
 }
@@ -1953,48 +1972,19 @@ const strToPl = (s, n) => {
 };
 
 // ---------- 방 채팅 (저장하지 않음: 방장 상태에만 최근 40개, 방이 닫히면 사라짐) ----------
-let chatInit = false, chatSeen = 0, chatLast = 0, chatOpen = false, chatPeekT = 0, chatSentAt = 0;
+let chatInit = false, chatLast = -1, chatSentAt = 0;
 function chatMsgs(c) { return Array.isArray(c) ? c : Object.values(c || {}); }
-function chatRender(list) {
-  const el = $('chatList');
-  el.innerHTML = list.length ? list.map((x) => `<li class="${x.c === myCid ? 'me' : ''}">${x.c === myCid ? '' : `<b>${esc(x.n)}</b>`}${esc(x.m)}</li>`).join('')
-    : '<li class="sys">아직 메시지가 없어요. 먼저 인사해 보세요!</li>';
-  el.scrollTop = el.scrollHeight;
-}
-function chatBadge() {
-  const n = chatLast - chatSeen, b = $('chatBadge');
-  b.hidden = chatOpen || n <= 0; b.textContent = n > 9 ? '9+' : String(n);
-}
 function chatUpdate(c) {
   const list = chatMsgs(c).sort((a, b) => a.i - b.i);
   const top = list.length ? list[list.length - 1].i : 0;
-  if (!chatInit) { chatInit = true; chatSeen = chatLast = top; } // 들어오기 전 메시지는 읽은 것으로
-  if (top <= chatLast && !chatOpen) { chatBadge(); return; }
-  const fresh = list.filter((x) => x.i > chatLast && x.c !== myCid);
-  chatLast = top;
-  if (chatOpen) { chatSeen = top; chatRender(list); }
-  else {
-    if (!fresh.length) chatSeen = top; // 내가 보낸 것만 새로 왔으면 배지 없음
-    const last = fresh[fresh.length - 1];
-    if (last) {
-      const pk = $('chatPeek'); pk.innerHTML = `<b>${esc(last.n)}</b>${esc(last.m)}`; pk.hidden = false;
-      clearTimeout(chatPeekT); chatPeekT = setTimeout(() => (pk.hidden = true), 3500);
-    }
-  }
-  chatBadge();
+  if (chatInit && top === chatLast) return;
+  chatInit = true; chatLast = top;
+  const el = $('chatList'), atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
+  el.innerHTML = list.length ? list.map((x) => `<li class="${x.c === myCid ? 'me' : ''}"><b>${esc(x.n)}</b>${esc(x.m)}</li>`).join('')
+    : '<li class="sys">채팅으로 인사해 보세요. 방이 닫히면 내용은 사라져요.</li>';
+  if (atBottom || list.length && list[list.length - 1].c === myCid) el.scrollTop = el.scrollHeight;
 }
-function chatOpenPanel() {
-  chatOpen = true; $('chatPanel').hidden = false; $('chatPeek').hidden = true; chatSeen = chatLast;
-  chatRender(chatMsgs(lastState && lastState.chat).sort((a, b) => a.i - b.i)); chatBadge();
-  if (!matchMedia('(pointer: coarse)').matches) $('chatInput').focus();
-}
-function chatClose() { chatOpen = false; $('chatPanel').hidden = true; chatBadge(); }
-function chatReset() {
-  chatInit = false; chatSeen = 0; chatLast = 0; chatClose(); $('chatList').innerHTML = ''; $('chatPeek').hidden = true; $('chatInput').value = '';
-}
-$('btnChat').addEventListener('click', () => (chatOpen ? chatClose() : chatOpenPanel()));
-$('btnChatClose').addEventListener('click', chatClose);
-$('chatPeek').addEventListener('click', chatOpenPanel);
+function chatReset() { chatInit = false; chatLast = -1; $('chatList').innerHTML = ''; $('chatInput').value = ''; }
 $('chatForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const m = $('chatInput').value.replace(/\s+/g, ' ').trim().slice(0, 100);
@@ -2731,7 +2721,7 @@ function showOver(s) {
   const gName = (h) => (GAMES[h.g] ? GAMES[h.g].name : '');
   const headline = tie ? '동점으로 대결 종료' : `${top.name} ${top.score}승으로 승리!`;
   const scoreLine = sorted.map((p) => `${p.name} ${p.score}승`).join(' · ');
-  const share = `🏆 유배지 퍼즐 대결 결과${net && net.roomName ? ` · ${net.roomName}` : ''}\n${headline}\n${scoreLine} (${hist.length}라운드 · ${s.target}승 선승)` +
+  const share = `🏆 데블스플랜 게임 대결 결과${net && net.roomName ? ` · ${net.roomName}` : ''}\n${headline}\n${scoreLine} (${hist.length}라운드 · ${s.target}승 선승)` +
     (hist.length ? '\n' + hist.map((h) => `R${h.r} ${gName(h)} ${lvName(h)} · ${h.w || '시간 종료'}`).join('\n') : '') +
     (SHARE_URL ? `\n${SHARE_URL}` : '');
   const isHost = net && net.isHost;
@@ -2966,18 +2956,91 @@ $('btnStart').addEventListener('click', () => {
 $('btnLeave').addEventListener('click', () => { leaveNet(); show('viewHome'); });
 $('btnCopyInvite').addEventListener('click', () => {
   if (!net) return;
-  copy(`🔐 유배지 퍼즐 대결 초대${net.roomName ? ` · ${net.roomName}` : ''}\n코드: ${net.code}` + (SHARE_URL ? `\n${SHARE_URL}` : '') + '\n"방 들어가기"에서 이 방을 고르거나 코드를 입력하세요!');
+  copy(`🔐 데블스플랜 게임 대결 초대${net.roomName ? ` · ${net.roomName}` : ''}\n코드: ${net.code}` + (SHARE_URL ? `\n${SHARE_URL}` : '') + '\n"방 들어가기"에서 이 방을 고르거나 코드를 입력하세요!');
 });
 $('btnHome').addEventListener('click', () => {
   closeSheet(); closeModal(); leaveNet(); stopRoomList(); solo = null; fence = null; sym = null; $('countdown').hidden = true;
   renderHome(); show('viewHome');
   try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* 무시 */ }
 });
+// ---------- 규칙 (게임별 탭 · 순서 · 그림 예시) ----------
+const RF = (() => {
+  const card = (L, n, col, sh, cls = '') => `<span class="card c-${col} ${cls}"><span class="L">${L}</span><span class="N">${n}</span>${shapeSvg(sh)}</span>`;
+  const cards = (arr) => `<div class="rf-cards">${arr.map((a) => card(...a)).join('')}</div>`;
+  const ok = '<span class="rf-ok">O</span>', no = '<span class="rf-no">X</span>';
+  // 울타리: 칸 집합의 테두리를 고리로 그린다
+  function fence(R, C, inside, show, opt = {}) {
+    const u = 26, pad = 8, W = C * u + pad * 2, H = R * u + pad * 2;
+    const isIn = (r, c) => r >= 0 && c >= 0 && r < R && c < C && inside.some(([a, b]) => a === r && b === c);
+    const clue = (r, c) => [[-1, 0], [1, 0], [0, -1], [0, 1]].filter(([dr, dc]) => isIn(r, c) !== isIn(r + dr, c + dc)).length;
+    let g = '';
+    const seg = (x1, y1, x2, y2, cls) => `<line class="${cls}" x1="${pad + x1 * u}" y1="${pad + y1 * u}" x2="${pad + x2 * u}" y2="${pad + y2 * u}"/>`;
+    if (opt.lines !== false) for (let r = 0; r <= R; r++) for (let c = 0; c < C; c++) {
+      const a = isIn(r - 1, c), b = isIn(r, c); if (a !== b) g += seg(c, r, c + 1, r, 'rf-line');
+    }
+    if (opt.lines !== false) for (let r = 0; r < R; r++) for (let c = 0; c <= C; c++) {
+      const a = isIn(r, c - 1), b = isIn(r, c); if (a !== b) g += seg(c, r, c, r + 1, 'rf-line');
+    }
+    (opt.extra || []).forEach(([x1, y1, x2, y2, cls]) => (g += seg(x1, y1, x2, y2, cls)));
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+      const hl = opt.hl && opt.hl[0] === r && opt.hl[1] === c;
+      if (hl) g = `<rect class="rf-hl" x="${pad + c * u + 2}" y="${pad + r * u + 2}" width="${u - 4}" height="${u - 4}" rx="4"/>` + g;
+      if (show.some(([a, b]) => a === r && b === c)) g += `<text class="rf-num" x="${pad + c * u + u / 2}" y="${pad + r * u + u / 2 + 5}">${opt.q ? '?' : clue(r, c)}</text>`;
+      else if (opt.blank && opt.blank.some(([a, b]) => a === r && b === c)) g += `<text class="rf-q" x="${pad + c * u + u / 2}" y="${pad + r * u + u / 2 + 5}">·</text>`;
+    }
+    for (let r = 0; r <= R; r++) for (let c = 0; c <= C; c++) g += `<circle class="rf-dot" cx="${pad + c * u}" cy="${pad + r * u}" r="2.6"/>`;
+    return `<svg class="rf-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${g}</svg>`;
+  }
+  // 대칭: 정사각형 칸으로 된 조각
+  function sym(pieces, opt = {}) {
+    const u = 18, pad = 6; let mx = 0, my = 0, g = '';
+    pieces.forEach((pc) => pc.cells.forEach(([x, y]) => { mx = Math.max(mx, x + 1 + (pc.dx || 0)); my = Math.max(my, y + 1 + (pc.dy || 0)); }));
+    pieces.forEach((pc, i) => pc.cells.forEach(([x, y]) => {
+      g += `<rect class="rf-p${i}" x="${pad + (x + (pc.dx || 0)) * u}" y="${pad + (y + (pc.dy || 0)) * u}" width="${u}" height="${u}"/>`;
+    }));
+    if (opt.axis != null) g += `<line class="rf-axis" x1="${pad + opt.axis * u}" y1="2" x2="${pad + opt.axis * u}" y2="${pad * 2 + my * u - 2}"/>`;
+    const W = pad * 2 + mx * u, H = pad * 2 + my * u;
+    return `<svg class="rf-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${g}</svg>`;
+  }
+  const L1 = [[0, 0], [0, 1], [1, 1]], L2 = [[1, 0], [1, 1], [0, 1]];
+  const loop = [[0, 0], [0, 1], [1, 1], [2, 1], [2, 2]];
+  return {
+    code: [
+      { t: 'A~Z 26장의 카드에는 <b>알파벳 · 숫자(1~26) · 색 · 도형</b>이 있어요.', f: cards([['A', 1, 'pink', 2], ['B', 2, 'yellow', 4], ['C', 3, 'purple', 3], ['D', 4, 'cyan', 1]]) },
+      { t: '화면의 <b>조건을 모두 만족하는 카드 4장</b>을 찾아요. 정답은 하나뿐이에요.', f: `<div class="rf-cond">예) 노란 카드는 사용되지 않음 · 숫자의 합은 30</div>` + cards([['C', 3, 'pink', 2, 'rf-pick'], ['F', 6, 'cyan', 0, 'rf-pick'], ['I', 9, 'yellow', 4, 'dim'], ['J', 10, 'purple', 1, 'rf-pick'], ['K', 11, 'lime', 3, 'rf-pick']]) },
+      { t: '찾았으면 <b>버저</b>를 누르고 답해요. 먼저 맞힌 사람이 이겨요.', f: '<div class="rf-buzz">버저</div>' },
+      { t: '답은 꼭 <b>알파벳 순서대로</b> 눌러요. 순서가 틀리면 오답이에요.', f: `<div class="rf-row">${ok}<span class="rf-code">C F J K</span></div><div class="rf-row">${no}<span class="rf-code">K C J F</span></div>` },
+    ],
+    fence: [
+      { t: '<b>점과 점을 이어</b> 선을 그어요. 끊기지 않는 <b>닫힌 울타리 하나</b>를 만들면 성공!', f: fence(3, 3, loop, [[0, 0], [1, 0], [1, 2], [2, 1]]) },
+      { t: '숫자는 그 칸을 둘러싼 네 변 중 <b>선이 그어진 변의 개수</b>예요 (0~3).', f: fence(3, 3, loop, [[0, 1]], { hl: [0, 1] }) },
+      { t: '숫자가 <b>없는 칸</b>은 몇 개의 선이 지나가는지 알려주지 않아요.', f: fence(3, 3, loop, [[0, 0], [1, 2]], { blank: [[0, 1], [0, 2], [1, 0], [1, 1], [2, 0], [2, 1], [2, 2]] }) },
+      { t: '울타리는 <b>하나</b>여야 해요. 둘로 나뉘면 안 되고, 모든 점을 쓸 필요는 없어요.', f: `<div class="rf-row">${ok}${fence(2, 3, [[0, 0], [0, 1], [1, 1]], [])}</div><div class="rf-row">${no}${fence(2, 3, [[0, 0], [1, 2]], [])}</div>` },
+    ],
+    sym: [
+      { t: '조각 <b>2~3개</b>가 주어져요. 모양이 같을 수도, 다를 수도 있어요.', f: `<div class="rf-row">${sym([{ cells: L1 }])}${sym([{ cells: L2 }])}</div>` },
+      { t: '조각을 <b>옮기고 · 돌리고 · 뒤집어서</b> 붙여요. 겹치면 안 되고, <b>변끼리</b> 맞닿아야 해요.', f: `<div class="rf-row">${ok}${sym([{ cells: L1 }, { cells: L2, dx: 2 }])}</div><div class="rf-row">${no}${sym([{ cells: [[0, 0]] }, { cells: [[0, 0]], dx: 1, dy: 1 }])}<span class="rf-cap">꼭짓점만 닿음</span></div>` },
+      { t: '완성한 도형이 <b>선대칭</b>이면 성공! 축은 가로 · 세로 · 45° 대각선 모두 인정돼요.', f: sym([{ cells: L1 }, { cells: L2, dx: 2 }], { axis: 2 }) },
+      { t: '꽉 찬 도형도, <b>가운데 구멍</b>이 있는 도형도 괜찮아요. 정해진 정답 모양은 없어요.', f: sym([{ cells: [[0, 0], [1, 0], [2, 0], [0, 1]] }, { cells: [[2, 1], [0, 2], [1, 2], [2, 2]] }], { axis: 1.5 }) },
+    ],
+  };
+})();
+function rulesHtml(g) {
+  const G = GAMES[g], steps = RF[g] || G.rules.map((t) => ({ t }));
+  return `<ol class="rf-steps">${steps.map((st, i) => `<li><span class="rf-n">${i + 1}</span><div class="rf-body"><p>${st.t}</p>${st.f ? `<div class="rf-fig">${st.f}</div>` : ''}</div></li>`).join('')}</ol>`
+    + (G.tips ? `<div class="rf-tips"><b>조작 방법</b><ul>${G.tips.map((t) => `<li>${t}</li>`).join('')}</ul></div>` : '');
+}
 $('btnRules').addEventListener('click', () => {
   const inGame = !$('viewGame').hidden;
-  const list = inGame ? [curGame] : PICKABLE;
-  modal(`<h2>규칙</h2>${list.map((g) => `<h3 style="font-size:16px;margin-top:4px">${GAMES[g].name}</h3><ul>${GAMES[g].rules.map((r) => `<li>${r}</li>`).join('')}</ul>${GAMES[g].tips ? `<p class="note">조작: ${GAMES[g].tips.join(' ')}</p>` : ''}`).join('')}
-    <button class="btn" data-close type="button">닫기</button>`);
+  let cur = inGame ? curGame : (PICKABLE.includes(homeGame) ? homeGame : PICKABLE[0]);
+  const tabs = PICKABLE.length > 1 ? `<div class="gtabs rf-tabs" role="tablist" style="grid-template-columns:repeat(${PICKABLE.length},1fr)">${PICKABLE.map((g) => `<button class="gtab" role="tab" type="button" data-rg="${g}">${GAMES[g].name}</button>`).join('')}</div>` : '';
+  modal(`<h2>규칙</h2>${tabs}<div id="rfBody"></div><button class="btn" data-close type="button">닫기</button>`);
+  const draw = () => {
+    $('rfBody').innerHTML = (PICKABLE.length > 1 ? '' : `<h3 class="rf-title">${GAMES[cur].name}</h3>`) + rulesHtml(cur);
+    document.querySelectorAll('[data-rg]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.rg === cur)));
+  };
+  document.querySelectorAll('[data-rg]').forEach((b) => b.addEventListener('click', () => { cur = b.dataset.rg; draw(); $('modalBody').scrollTop = 0; }));
+  draw();
 });
 
 // ---------- 시작 ----------
